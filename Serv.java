@@ -1,6 +1,6 @@
 import java.net.*;
 import java.io.*;
-public class hallo
+public class Serv
 {
  public static void main(String[] args) {
 	int readNr, MAXMSG=100;
