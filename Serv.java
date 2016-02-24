@@ -9,7 +9,7 @@ public class Serv
 		System.out.println("Hello");
 		System.out.flush();
 		for(int k=0;k<3;k++){
-			if(readNr=System.in/read(b)==-1)
+			if(readNr=System.in.read(b)==-1)
 				break;
 			System.out.write(b,0,readNr);
 			System.out.flush();
