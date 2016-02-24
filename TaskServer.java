@@ -1,6 +1,6 @@
 /* ------------------------------------------------------------------------- */
 /*   Copyright (C) 2016 
-                Author:  name@my.fit.edu
+                Author:  bmathew2014@my.fit.edu
                 Author:  rbabbitt2014@my.fit.edu
                 Florida Tech, Computer Science
    
@@ -27,58 +27,61 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option.Builder;
 import java.sql.*;
+import java.io.*;
+import java.net.*;
+import java.io.BufferedReader;
 
 public class TaskServer {
     private int port;
+    private String host = "127.0.0.1";
      
     public TaskServer(int p, String file) {
         port = p;
-        sqlConnect(file);
+        //sqlConnect(file);
     }
     
-    public void sqlConnect(String dataFile) {
-        Connection con;    
+    public void createSocket() {
+
         try {
-            Class.forName("org.sqlite.JDBC"); 
-            con = DriverManager.getConnection("jdbc:sqlite:" + dataFile);
-        } catch (Exception e) {
-            System.err.println(e.printStackTrace());
-            System.exit(0);
+            Socket sock = new Socket(host, port);
+            InputStream in = sock.getInputStream();
+            OutputStream out = sock.getOutputStream();
+            InputStreamReader isr = new InputStreamReader(System.in);
+            BufferedReader reader = new BufferedReader(isr);
+            
+            int readNr;
+            byte[] b = new byte[200];
+            if ((readNr = in.read(b)) == 01) {
+                return;
+            } 
+            
+            while(true) {
+            
+                String input = reader.readLine();
+                out.write((input + "\n").getBytes("latin1"));
+                out.flush();
+                if((readNr = in.read(b)) == -1) {
+                    break;
+                }
+                System.out.println(new String(b, 0, readNr, "latin1"));
+            }
+            
+            out.close();
+            in.close();
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
+        } catch (Exception e2) {
+            System.out.println(e2.getMessage());
         }
-        System.out.println("Datafile " + dataFile + " loaded");
+        
     }
     
-    public initDataFile() {
-        String tasks_table = "CREATE TABLE tasks ( " +
-                             "id    INT PRIMARY KEY    NOT NULL," +
-                             "task  TEXT               NOT NULL)"
-                     
-        String project_table = "CREATE TABLE projects ( " +
-                               "id      INT PRIMARY KEY     NOT NULL," +
-                               "name    TEXT                NOT NULL)";
-                               
-        String definition = "CREATE TABLE definitions ( " +
-                            "task_id    INT     NOT NULL," +
-                            "project_id INT     NOT NULL," +
-                            "user_id    INT     NOT NULL)";
-                            
-        String schedule_table = "CREATE TABLE schedule ( " +
-                                "task_id INT    NOT NULL," +
-                                "user    TEXT   NOT NULL," +
-                                "start   TEXT   NOT NULL," +
-                                "stop    TEXT   NOT NULL)";
-                            
-                            
-        String user_table = "CREATE TABLE users ( " +
-                            "id     INT PRIMARY KEY     NOT NULL," +
-                            "name   TEXT                NOT NULL,"
-                            "ip     TEXT                NOT NULL)"; 
-                     
-    }
+
     
       
     public static void main(String[] args) {
         HelpFormatter formatter = new HelpFormatter();
+        int port = 2236;
         
         Option port_option = Option.builder("p")          
             .required(true)
@@ -117,13 +120,16 @@ public class TaskServer {
             }
             
             if (cmd.hasOption("p")) {
-                int port = Integer.parseInt(cmd.getOptionValue("p"));
+                port = Integer.parseInt(cmd.getOptionValue("p"));
                 System.out.println("Starting sever on port " + port);    
             }
             
             if (cmd.hasOption("d")) {
                 String dataFile = cmd.getOptionValue("d");
             }
+            
+            TaskServer server = new TaskServer(port, "test");
+            server.createSocket();
                                 
         } catch (ParseException pe) {
             System.err.println("Parsing failed: " + pe.getMessage());
