@@ -30,7 +30,6 @@ import java.sql.*;
 import java.io.*;
 import java.net.*;
 
-
 public class TaskServer {
     private int port;
     private String host = "127.0.0.1";
