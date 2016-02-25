@@ -32,31 +32,35 @@ import java.net.*;
 
 public class TaskServer {
     private int port;
-    private String host = "127.0.0.1";
+    ServerSocket sock = null;
+    DataOutputStream out = null;
+    DataInputStream in = null;
+    BufferedReader reader = null;
+    InputStreamReader  irs = null;
 
     public TaskServer(int p, String file) {
         port = p;
         //sqlConnect(file);
     }
 
-    public void createSocket() {
-        ServerSocket sock = null;
-        DataOutputStream out = null;
-        DataInputStream in = null;
-        BufferedReader reader = null;
-        InputStreamReader  irs = null;
-
+    public void run() {    
+        
         try {
             sock = new ServerSocket(port);
-        } catch (Exception e) {
-        }
-
-        while (true) {
-            try {
+        
+            while (true) {
                 Socket server = sock.accept();
                 out = new DataOutputStream(server.getOutputStream());
                 reader = new BufferedReader(new InputStreamReader(server.getInputStream()));    
-                System.out.println(reader.readLine());
+                
+                String input = reader.readLine();
+                System.out.println(input);
+                String[] cmd = input.split(";");
+                for (int i = 0; i < cmd.length-1; i++) {
+                    System.out.println(cmd[i]);
+                }
+
+
                 out.writeUTF("thank you");
                 server.close();
                 out.close();
@@ -128,7 +132,7 @@ public class TaskServer {
             }
 
             TaskServer server = new TaskServer(port, "test");
-            server.createSocket();
+            server.run();
 
         } catch (ParseException pe) {
             System.err.println("Parsing failed: " + pe.getMessage());
