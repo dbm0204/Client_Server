@@ -88,23 +88,15 @@ public class Server implements Runnable {
             streamWriter = new OutputStreamWriter(outputStream);
             bufferedWriter = new BufferedWriter(streamWriter);
 
-            Parser parser = new Parser(this, db);            
-
-            String input = null;
-            while(input == null || !input.equals("LOGOUT")) {
-                if (bufferedReader.ready()) {
-                    input = bufferedReader.readLine();
-                    args = input.split(";");
-                    System.out.println(input);
-                    System.out.flush();
-                    
-                    String result = parser.parse(input);
-                    
-                    bufferedWriter.write(result + "\n"); 
-                    bufferedWriter.flush();
-                }
+            Parser parser = new Parser(inputStream);
+            parser.setDatabase(db);
+            
+            while (!clientSock.isClosed()) {
+                parser.parse(bufferedWriter, clientIp, clientPort);
             }
 
+            System.out.println("disconnected to: " + clientIp +
+                               " using port " + clientPort);
             clientSock.close();
             bufferedWriter.close();
             bufferedReader.close();
@@ -115,6 +107,8 @@ public class Server implements Runnable {
         } catch (Exception e3) {
             e3.printStackTrace();
         }
+        
+        Thread.currentThread().interrupt();
     }
     
     public String getClientIp() {

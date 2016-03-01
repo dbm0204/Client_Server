@@ -1,0 +1,201 @@
+/* ------------------------------------------------------------------------- */
+/*   Copyright (C) 2016 
+Author:  bmathew2014@my.fit.edu
+Author:  rbabbitt2014@my.fit.edu
+Florida Tech, Computer Science
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published 
+by the Free Software Foundation; either the current version of the 
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.              */
+
+options {
+    STATIC = false;
+}
+
+PARSER_BEGIN(Parser)
+
+import java.util.ArrayList;
+import java.io.BufferedWriter;
+
+public class Parser {
+  static Database db = null;
+
+  public static void main(String args[]) {
+
+        Parser parser = new Parser(System.in);
+        parser.setDatabase(new Database("database.db", "init_db.ddl"));
+        //String result = parser.parse();
+  }
+  
+  public void setDatabase(Database db) {
+    this.db = db;
+  }
+}
+
+PARSER_END(Parser)
+
+/*  COMMANDS    */
+TOKEN: {
+  <PROJECT_DEFINITION: "PROJECT_DEFINITION">
+| <TASKS: "TASKS">
+| <TAKE: "TAKE">
+| <USER: "USER">
+| <PROJECT: "PROJECT">
+| <GET_PROJECTS: "GET_PROJECTS">
+| <GET_PROJECT: "GET_PROJECT">
+| <EXIT: "EXIT">
+}
+
+
+/*  TIME    */
+TOKEN: {
+  <#YEAR: <DIGIT><DIGIT><DIGIT><DIGIT>>
+| <#MONTH: "0"["0"-"9"] | "1"["0"-"2"]>
+| <#DAY: <DIGIT><DIGIT>>
+| <#DATE: <YEAR>"-"<MONTH>"-"<DAY>>
+| <#HOUR: (["0"-"5"]["0"-"9"] | "60")"h">
+| <#MINUTES:(["0"-"5"]["0"-"9"] | "60")"m">
+| <#SECONDS: (["0"-"5"]["0"-"9"] | "60")"s">
+| <#MILISECONDS: <DIGIT><DIGIT><DIGIT>"Z">
+| <#TIME: <HOUR><MINUTES><SECONDS><MILISECONDS>>
+| <DATETIME: <DATE>":"<TIME>>
+}
+
+TOKEN: {
+  <EOL: "\n" | "\r" | "\r\n" >
+| <E: <EOL> | []>
+| <END: ";">
+| <COLON: ":">
+| <DIGIT: ["0"-"9"]>
+| <LETTER: ["a"-"z", "A"-"Z"]>
+| <VARIABLE: <LETTER> (<LETTER> | <DIGIT> | " ")* >
+}
+
+
+void parse(BufferedWriter writer, String ip, int port): 
+{}
+{
+    try {
+        (<GET_PROJECT><END> { get_project(writer); } <EOL>
+        |<PROJECT_DEFINITION><COLON>{ project_definition(writer);}<EOL>
+        |<TAKE><END> { take(writer, ip, port); } <EOL>
+        |<GET_PROJECTS> { get_projects(writer); }<EOL>)
+        |<EOL> { return; }
+    } catch (ParseException e) {
+        Token token=null;
+        token = getNextToken();
+        System.out.println("FAIL;" + token.toString());
+    }
+}
+
+void project_definition(BufferedWriter writer):
+{ Token proj=null, tasks=null; boolean success=false; }
+{
+    try {
+        proj=<VARIABLE><END>
+        <TASKS><COLON> tasks=<DIGIT><END>
+        (task(writer, proj))*
+        {
+            success = db.createProject(proj.toString());
+            if (!success) {
+                throw new Exception();
+            }
+            write(writer,"OK;PROJECT_DEFINITION:" + proj.toString());
+        }
+    } catch (Exception e) {
+        write(writer,"FAIL;");
+        Token token=null;
+        while ((token = getNextToken()) != null) {
+            write(writer,token.toString());
+        }
+    }
+}
+
+void task(BufferedWriter writer, Token proj):
+{ Token task=null, start=null, end=null; boolean success=false; }
+{
+    task=<VARIABLE><END>
+    start=<DATETIME><END>
+    end=<DATETIME><END>
+    { 
+        success = db.createTask(proj.toString(), 
+                                task.toString(), 
+                                start.toString(), 
+                                end.toString());
+    }
+}
+
+void take(BufferedWriter writer, String ip, int port):
+{ Token user=null, proj=null, task=null; boolean success=false; }
+{
+    <USER><COLON> user=<VARIABLE> <END>
+    <PROJECT><COLON> proj=<VARIABLE> <END>
+    task=<VARIABLE>
+    {
+        success = db.assignTask(proj.toString(), task.toString(), user.toString()); 
+        if (success && ip != null) {
+            success = db.updateUser(user.toString(), ip, port);
+        }
+        if (!success) {
+            write(writer,"FAIL;TAKE;USER:"+user.toString()+
+                         ";PROJECT"+proj+";"+task.toString());
+            return;
+        }
+        write(writer,"OK;TAKE;USER:"+user.toString()+
+                     ";PROJECT:"+proj.toString()+";"+
+                     task.toString() + "\n");   
+    }
+}
+
+void get_projects(BufferedWriter writer):
+{}
+{
+    {
+        ArrayList<String> projects = db.getProjects();
+        write(writer, "OK;PROJECTS:"+projects.size());
+        for (int i = 0; i < projects.size(); i++) {
+            write(writer, ";" + projects.get(i));
+        }
+        write(writer, "\n");
+    }
+}
+
+void get_project(BufferedWriter writer):
+{ Token project=null; }
+{
+    project=<VARIABLE>
+    {
+        ArrayList<Task> tasks = db.getProject(project.toString());
+        String buffer = "OK;PROJECT_DEFINITION:" + project.toString() + 
+                        ";TASKS:"+tasks.size()+";";
+        
+        for (int i = 0; i < tasks.size(); i++) {
+            buffer += tasks.get(i).toString();
+        }
+        write(writer, buffer + "\n");
+    } 
+}
+
+void write(BufferedWriter writer, String msg):
+{}
+{
+    {
+        try {
+            writer.write(msg);
+            writer.flush();
+        } catch (Exception e) {
+            System.err.print("Failed to write: " + e.getMessage());
+        }
+    }
+}
+

@@ -4,7 +4,12 @@ SRC = $(wildcard *.java)
 CLASS = $(SRC:.java=.class)
 EXE = $(basename $(SRC))
 
-all: $(EXE) 
+all: Parser $(EXE) 
+
+
+Parser: Parser.jj
+	java -cp lib/javacc.jar javacc $<
+	$(CC) $(CFLAGS) Parser.java
 
 %:%.java
 	$(CC) $(CFLAGS) $<

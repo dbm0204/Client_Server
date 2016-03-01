@@ -80,55 +80,50 @@ public class Database {
         }
     }
     
-    public void createProject(String proj) {
+    public boolean createProject(String proj) {
         assert(proj != null);
         String sql = "INSERT INTO projects (name) VALUES ('"+proj+"')";
-        try {
-            Statement statement = con.createStatement();
-            statement.executeUpdate(sql);
-            con.commit();
-            statement.close();
-        } catch (Exception e) {
-            System.out.println("failed to create project: " + e.getMessage());
-        }
+        return runStatement(sql);
     }
     
-    public void createTask(String proj, String task, String start, String end) {
-        String insert_task = "INSERT INTO tasks " +
-                             "(task, start, end, project_id) " +
-                             "SELECT '"+task+"','"+start+"','"+end+
-                             "', id FROM projects WHERE " +
-                             "name = '"+proj+"';";
-                                                  
-        try {
-            Statement statement = con.createStatement();
-            statement.executeUpdate(insert_task);
-            con.commit();
-            statement.close();
-        } catch (Exception e) {
-            System.err.println("failed to create task: " + e.getMessage());
-        }
+    public boolean createTask(String proj,String task,String start,String end) {
+        String sql = "INSERT INTO tasks " +
+                     "(task, start, end, project_id) " +
+                     "SELECT '"+task+"','"+start+"','"+end+
+                     "', id FROM projects WHERE " +
+                     "name = '"+proj+"';";
+        return runStatement(sql);
     }
     
-    public void assignTask(String project, String task, 
-    String user, String ip, int port) {
-    
+    public boolean assignTask(String project, String task, String user) {
         String sql = "INSERT INTO users " + 
-                     "(username, ip, port, task_id) " +
-                     "SELECT '"+user+"','"+ip+"',"+
-                     port+", id FROM tasks WHERE " +
-                     "task = '"+task+"' AND " +
+                     "(username, task_id) " +
+                     "SELECT '"+user+"', id FROM tasks " +
+                     " WHERE task = '"+task+"' AND " +
                      "project_id IN (SELECT id FROM " +
                      "projects WHERE name = '"+project+"');";        
-        
+        return runStatement(sql);  
+    }
+    
+    public boolean updateUser(String user, String ip, int port) {
+        String sql = "UPDATE users SET " +
+                     "ip = '" + ip + "'," +
+                     "port = " + port + " " +
+                     "WHERE username = '" + user + "';";
+        return runStatement(sql);    
+    }
+    
+    public boolean runStatement(String sql) {
         try {
             Statement statement = con.createStatement();
             statement.executeUpdate(sql);
             con.commit();
             statement.close();
         } catch (Exception e) {
-            System.err.println("failed to assign task: " + e.getMessage());
+            System.err.println("Statement Failed: " + e.getMessage());
+            return false;
         }
+        return true; 
     }
     
     public ArrayList<String> getProjects() {
@@ -149,69 +144,37 @@ public class Database {
         return projects;
     }
     
-    public String getProject(String proj) {
-        String result = "";
-        String[] cols = {"task", "start", "end", 
-                         "username", "ip", "port"};
-                         
+    public ArrayList<Task> getProject(String proj) {
+        ArrayList<Task> tasks = new ArrayList<Task>();                       
         String sql = "SELECT * FROM projects " +
                      "LEFT JOIN tasks ON " +
                      "tasks.project_id=projects.id AND name='"+proj+"'" +
                      "LEFT JOIN users ON " +
                      "users.task_id=tasks.id;";
-                     
-        DateFormat fmt;
-        fmt = new SimpleDateFormat("yyyy-MM-dd:HH'h'mm'm'ss's'SSS'Z'");
-        Date now = new Date();
-        System.out.println("Today is: " + fmt.format(now));
-        
         try {
             Statement statement = con.createStatement();
             ResultSet results = statement.executeQuery(sql);
-            int counter = 0;
-            
-            
-            
+                     
             while (results.next()) {
-                for (String col: cols) {
-                    result += results.getString(col) + ";";
-                }
+                String name = results.getString("task");
+                String start = results.getString("start");
+                String end = results.getString("end");
+                Task task = new Task (name, start, end);
                 
-                Date date = fmt.parse(results.getString("end"));
                 String user = results.getString("username");
-                if (now.after(date) && user != null) {
-                    result += "DONE;";
-                } else {
-                    result += "WAITING;";
+                String ip = results.getString("ip");
+                String str_port = results.getString("port");
+                
+                if (user != null && ip != null && str_port != null) {
+                    int port = Integer.parseInt(str_port);
+                    task.addUser(user, ip, port);
                 }
-                counter++;
+                tasks.add(task);
             }
-            result = "OK;PROJECT_DEFINITION:"+proj+";TASKS:"+ 
-                     counter+";"+result;
-            
         } catch (Exception e) {
             System.err.println("failed to get project: " + e.getMessage());
-        }
-        
-        return result;
-    }
-
-    //Testing purposes
-    public static void main(String[] args) {
-        Database db = new Database("test.db", "init_db.ddl");
-        String date = "2016-03-12:18h30m00s001Z";
-        db.createProject("exam");
-        db.createTask("exam", "write exam", date, date);
-        db.assignTask("exam", "write exam", "john", "10.0.0.0", 2232);
-        ArrayList<String> projects = db.getProjects();
-        if (projects != null) {
-            System.out.println("Projects: " + projects.size());
-            for (int i = 0; i < projects.size(); i++) {
-                System.out.println(projects.get(i));
-            }
-        }
-        System.out.println(db.getProject("exam"));
-        db.disconnect();
+        }  
+        return tasks;
     }
 }
 

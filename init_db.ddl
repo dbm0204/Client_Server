@@ -12,8 +12,8 @@ FOREIGN KEY(project_id) REFERENCES projects(id));
 
 CREATE TABLE users (
 id           INTEGER    PRIMARY KEY,
-username     TEXT       NOT NULL,
-ip           TEXT       NOT NULL,
-port         INTEGER    NOT NULL,
 task_id      INTEGER    NOT NULL,
+username     TEXT       NOT NULL,
+ip           TEXT,
+port         INTEGER,
 FOREIGN KEY(task_id) REFERENCES tasks(id));
