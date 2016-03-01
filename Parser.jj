@@ -73,12 +73,12 @@ TOKEN: {
 
 TOKEN: {
   <EOL: "\n" | "\r" | "\r\n" >
-| <E: <EOL> | []>
 | <END: ";">
 | <COLON: ":">
 | <DIGIT: ["0"-"9"]>
 | <LETTER: ["a"-"z", "A"-"Z"]>
 | <VARIABLE: <LETTER> (<LETTER> | <DIGIT> | " ")* >
+| <SPECIAL: ~[] >
 }
 
 
@@ -93,32 +93,29 @@ void parse(BufferedWriter writer, String ip, int port):
         |<EOL> { return; }
     } catch (ParseException e) {
         Token token=null;
-        token = getNextToken();
-        System.out.println("FAIL;" + token.toString());
+        write(writer,"Fail;");
+        do {
+            token = getNextToken();
+            write(writer,token.toString());
+        } while (token.kind != EOL);
+        write(writer,"\n");
     }
 }
 
 void project_definition(BufferedWriter writer):
 { Token proj=null, tasks=null; boolean success=false; }
 {
-    try {
-        proj=<VARIABLE><END>
-        <TASKS><COLON> tasks=<DIGIT><END>
-        (task(writer, proj))*
-        {
-            success = db.createProject(proj.toString());
-            if (!success) {
-                throw new Exception();
-            }
-            write(writer,"OK;PROJECT_DEFINITION:" + proj.toString());
+    proj=<VARIABLE><END>
+    <TASKS><COLON> tasks=<DIGIT><END>
+    {
+        success = db.createProject(proj.toString());
+        if (!success) {
+            write(writer,"Fail;PROJECT_DEFINITION:"+proj.toString()+";\n");
+            return;
         }
-    } catch (Exception e) {
-        write(writer,"FAIL;");
-        Token token=null;
-        while ((token = getNextToken()) != null) {
-            write(writer,token.toString());
-        }
+        write(writer,"OK;PROJECT_DEFINITION:" + proj.toString() +"\n");
     }
+    (task(writer, proj))*
 }
 
 void task(BufferedWriter writer, Token proj):
@@ -132,6 +129,11 @@ void task(BufferedWriter writer, Token proj):
                                 task.toString(), 
                                 start.toString(), 
                                 end.toString());
+        if (!success) {
+            write(writer,"Fail;"+task.toString() +
+                         ":"+start.toString() +
+                         ";"+end.toString() + ";\n");
+        }
     }
 }
 
@@ -162,6 +164,10 @@ void get_projects(BufferedWriter writer):
 {
     {
         ArrayList<String> projects = db.getProjects();
+        if (projects == null) {
+            write(writer, "FAIL;GET_PROJECTS;" + "\n");
+            return;
+        }
         write(writer, "OK;PROJECTS:"+projects.size());
         for (int i = 0; i < projects.size(); i++) {
             write(writer, ";" + projects.get(i));
@@ -176,6 +182,10 @@ void get_project(BufferedWriter writer):
     project=<VARIABLE>
     {
         ArrayList<Task> tasks = db.getProject(project.toString());
+        if (tasks == null) {
+            write(writer, "FAIL;GET_PROJECT;" + project.toString() + "\n");
+            return;
+        }
         String buffer = "OK;PROJECT_DEFINITION:" + project.toString() + 
                         ";TASKS:"+tasks.size()+";";
         
@@ -194,7 +204,7 @@ void write(BufferedWriter writer, String msg):
             writer.write(msg);
             writer.flush();
         } catch (Exception e) {
-            System.err.print("Failed to write: " + e.getMessage());
+            System.err.print("Failed to write: " + e.getMessage() + "\n");
         }
     }
 }

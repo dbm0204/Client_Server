@@ -71,43 +71,40 @@ get_projects(writer);
       }
     } catch (ParseException e) {
 Token token=null;
-        token = getNextToken();
-        System.out.println("FAIL;" + token.toString());
+        write(writer,"Fail;");
+        do {
+            token = getNextToken();
+            write(writer,token.toString());
+        } while (token.kind != EOL);
+        write(writer,"\u005cn");
     }
   }
 
   final public void project_definition(BufferedWriter writer) throws ParseException {Token proj=null, tasks=null; boolean success=false;
-    try {
-      proj = jj_consume_token(VARIABLE);
-      jj_consume_token(END);
-      jj_consume_token(TASKS);
-      jj_consume_token(COLON);
-      tasks = jj_consume_token(DIGIT);
-      jj_consume_token(END);
-      label_1:
-      while (true) {
-        switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-        case VARIABLE:{
-          ;
-          break;
-          }
-        default:
-          jj_la1[2] = jj_gen;
-          break label_1;
-        }
-        task(writer, proj);
-      }
+    proj = jj_consume_token(VARIABLE);
+    jj_consume_token(END);
+    jj_consume_token(TASKS);
+    jj_consume_token(COLON);
+    tasks = jj_consume_token(DIGIT);
+    jj_consume_token(END);
 success = db.createProject(proj.toString());
-            if (!success) {
-                {if (true) throw new Exception();}
-            }
-            write(writer,"OK;PROJECT_DEFINITION:" + proj.toString());
-    } catch (Exception e) {
-write(writer,"FAIL;");
-        Token token=null;
-        while ((token = getNextToken()) != null) {
-            write(writer,token.toString());
+        if (!success) {
+            write(writer,"Fail;PROJECT_DEFINITION:"+proj.toString()+";\u005cn");
+            {if ("" != null) return;}
         }
+        write(writer,"OK;PROJECT_DEFINITION:" + proj.toString() +"\u005cn");
+    label_1:
+    while (true) {
+      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+      case VARIABLE:{
+        ;
+        break;
+        }
+      default:
+        jj_la1[2] = jj_gen;
+        break label_1;
+      }
+      task(writer, proj);
     }
   }
 
@@ -122,6 +119,11 @@ success = db.createTask(proj.toString(),
                                 task.toString(),
                                 start.toString(),
                                 end.toString());
+        if (!success) {
+            write(writer,"Fail;"+task.toString() +
+                         ":"+start.toString() +
+                         ";"+end.toString() + ";\u005cn");
+        }
   }
 
   final public void take(BufferedWriter writer, String ip, int port) throws ParseException {Token user=null, proj=null, task=null; boolean success=false;
@@ -150,6 +152,10 @@ success = db.assignTask(proj.toString(), task.toString(), user.toString());
 
   final public void get_projects(BufferedWriter writer) throws ParseException {
 ArrayList<String> projects = db.getProjects();
+        if (projects == null) {
+            write(writer, "FAIL;GET_PROJECTS;" + "\u005cn");
+            {if ("" != null) return;}
+        }
         write(writer, "OK;PROJECTS:"+projects.size());
         for (int i = 0; i < projects.size(); i++) {
             write(writer, ";" + projects.get(i));
@@ -160,6 +166,10 @@ ArrayList<String> projects = db.getProjects();
   final public void get_project(BufferedWriter writer) throws ParseException {Token project=null;
     project = jj_consume_token(VARIABLE);
 ArrayList<Task> tasks = db.getProject(project.toString());
+        if (tasks == null) {
+            write(writer, "FAIL;GET_PROJECT;" + project.toString() + "\u005cn");
+            {if ("" != null) return;}
+        }
         String buffer = "OK;PROJECT_DEFINITION:" + project.toString() +
                         ";TASKS:"+tasks.size()+";";
 
@@ -174,7 +184,8 @@ try {
             writer.write(msg);
             writer.flush();
         } catch (Exception e) {
-            System.err.print("Failed to write: " + e.getMessage());
+            System.err.print("Failed to write: " + msg +
+                             "Reason: " + e.getMessage() + "\u005cn");
         }
   }
 
@@ -193,7 +204,7 @@ try {
       jj_la1_init_0();
    }
    private static void jj_la1_init_0() {
-      jj_la1_0 = new int[] {0xca,0x800ca,0x2000000,};
+      jj_la1_0 = new int[] {0xca,0x800ca,0x1000000,};
    }
 
   /** Constructor with InputStream. */

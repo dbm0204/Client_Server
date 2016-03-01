@@ -47,17 +47,17 @@ public interface ParserConstants {
   /** RegularExpression Id. */
   int EOL = 19;
   /** RegularExpression Id. */
-  int E = 20;
+  int END = 20;
   /** RegularExpression Id. */
-  int END = 21;
+  int COLON = 21;
   /** RegularExpression Id. */
-  int COLON = 22;
+  int DIGIT = 22;
   /** RegularExpression Id. */
-  int DIGIT = 23;
+  int LETTER = 23;
   /** RegularExpression Id. */
-  int LETTER = 24;
+  int VARIABLE = 24;
   /** RegularExpression Id. */
-  int VARIABLE = 25;
+  int SPECIAL = 25;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -84,12 +84,12 @@ public interface ParserConstants {
     "<TIME>",
     "<DATETIME>",
     "<EOL>",
-    "<E>",
     "\";\"",
     "\":\"",
     "<DIGIT>",
     "<LETTER>",
     "<VARIABLE>",
+    "<SPECIAL>",
   };
 
 }
