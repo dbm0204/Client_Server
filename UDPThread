@@ -1,0 +1,30 @@
+import java.io.*;
+import java.net.*;
+import java.lang.Thread;
+public class UDPThread extends Thread{
+	private DatagramSocket socket =null;
+	public UDPThread(DatagramSocket socket){
+		super("UDPThread");
+		this.socket=socket;
+	}
+	@Override
+	public void run(){
+		byte[] buffer = new byte[2048];
+		try{
+			DatagramPacket packet = new DatagramPacket(buffer,buffer.length)
+			socket.receive(packet);
+			String inputLine = new String(buffer);
+			String outputLine;
+			DatagramPacket reply = new DatagramPacket(outputLine.getBytes(), outputLine.getBytes().length,
+                              packet.getAddress(), packet.getPort());
+			socket.send(reply);
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+			
+		}
+		socket.close();
+		
+	}
+}
