@@ -76,43 +76,6 @@ public class Server implements Runnable {
         }
     }
 
-    @Override
-    public void run() {
-        BufferedReader bufferedReader = null;        
-        OutputStreamWriter streamWriter = null;
-        BufferedWriter bufferedWriter = null;
-
-        try {
-            clientIp = clientSock.getInetAddress().getHostAddress();
-            clientPort = clientSock.getPort();
-            System.out.println("Connected to: "+clientIp+":"+clientPort);
-
-            InputStream inputStream = clientSock.getInputStream();
-            OutputStream outputStream = clientSock.getOutputStream();
-            streamWriter = new OutputStreamWriter(outputStream);
-            bufferedWriter = new BufferedWriter(streamWriter);
-
-            Parser parser = new Parser(inputStream);
-            parser.setDatabase(db);
-            
-            while (!clientSock.isClosed()) {
-                parser.parse(bufferedWriter, clientIp, clientPort);
-            }
-
-            System.out.println("disconnected to: "+clientIp+":"+clientPort);
-            clientSock.close();
-            bufferedWriter.close();
-            bufferedReader.close();
-        } catch (SocketTimeoutException e1) {
-            System.err.println("Server Timed out: " + e1.getMessage()); 
-        } catch (IOException e2) {
-            System.err.println("IO Error: " + e2.getMessage());
-        } catch (Exception e3) {
-            e3.printStackTrace();
-        }
-        Thread.currentThread().interrupt();
-    }
-
     public static void main(String[] args) {
         HelpFormatter formatter = new HelpFormatter();
         int port = 2236;

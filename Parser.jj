@@ -31,10 +31,6 @@ public class Parser {
   static Database db = null;
 
   public static void main(String args[]) {
-
-        Parser parser = new Parser(System.in);
-        parser.setDatabase(new Database("database.db", "init_db.ddl"));
-        //String result = parser.parse();
   }
   
   public void setDatabase(Database db) {

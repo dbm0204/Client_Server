@@ -1,53 +1,72 @@
 import java.io.*;
 import java.net.*;
+import java.nio.channels.*;
+import java.nio.*;
+import java.util.*;
+import java.nio.charset.*;
+
+/*
+ * Sources
+ *
+ */
 
 public class UdpServer {
 
     public static void main (String[] args) throws Exception {
-        DatagramSocket serverSocket = new DatagramSocket(2356);
         byte[] receiveData = new byte[10];
         byte[] sendData = new byte[10];
 
         int port = 2356;
-        SocketAddress address = InetSocketAddress(port);
+        SocketAddress address = new InetSocketAddress(port);
 
         ServerSocketChannel tcpChannel = ServerSocketChannel.open();
-        tcpChannel.bind(address);
-        tcpChannel.configureBlocking(false);
         ServerSocket tcpSocket = tcpChannel.socket();
+        tcpSocket.bind(address);
 
         DatagramChannel udpChannel = DatagramChannel.open();
-        udpChannel.bind(address);
-        udpChannel.configureBlocking(false);
         DatagramSocket udpSocket = udpChannel.socket();
+        udpSocket.bind(address);
+        
+        tcpChannel.configureBlocking(false);
+        udpChannel.configureBlocking(false);
 
+        Selector selector = Selector.open();
+        tcpChannel.register(selector, SelectionKey.OP_ACCEPT);
+        udpChannel.register(selector, SelectionKey.OP_READ);
 
+        CharsetEncoder encoder = Charset.forName("US-ASCII").newEncoder();
 
+        while(true) {
+            try {
+                selector.select();
+                ByteBuffer response = encoder.encode(CharBuffer.wrap("TEST"));
+                Set keys = selector.selectedKeys();
 
-        while(true)
-        {
+                Iterator it = keys.iterator();
+                while (it.hasNext()) {
+                    SelectionKey key = (SelectionKey) it.next();
+                    it.remove();
 
-
-
-
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-
-
-
-            serverSocket.receive(receivePacket);
-            String sentence = new String( receivePacket.getData());
-            System.out.println("RECEIVED: " + sentence);
-
-
-
-
-            InetAddress IPAddress = receivePacket.getAddress();
-            int port = receivePacket.getPort();
-            String capitalizedSentence = sentence.toUpperCase();
-            sendData = capitalizedSentence.getBytes();
-            DatagramPacket sendPacket =
-                new DatagramPacket(sendData, sendData.length, IPAddress, port);
-            serverSocket.send(sendPacket);
+                    Channel channel = (Channel)key.channel();
+                    if (key.isAcceptable() && channel == tcpChannel) {
+                        SocketChannel client = tcpChannel.accept();
+                        if (client != null) {
+                            client.write(response);
+                            client.close();
+                        }
+                    } else if (key.isReadable() && channel == udpChannel) {
+                        char[] buffer = new byte[1024];
+                        DatagramPacket receivePacket = new DatagramPacket(buffer, buffer.length);
+                        SocketAddress clientAddress = udpChannel.receive(receivePacket);
+                        System.out.println(receivePacket.getData());
+                        if (clientAddress != null) {
+                            udpChannel.send(response, clientAddress);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+            
+            }
         }
     }
 }
