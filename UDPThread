@@ -1,6 +1,6 @@
 import java.io.*;
 import java.net.*;
-
+import java.lang.Thread;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -9,25 +9,23 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
-import java.lang.Thread;
-public class UDPThread extends Thread
+public class UDPThread implements Runnable
 {
-	private DatagramSocket serversocket =null;
+	private ServerSocket serversocket =null;
 	private Thread server =null;
 	private String clientIp =null;
 	private int port =2236;
 	private ServerSocket clientSock =null;
 	private Database db;
-	private UDPThread(DatagramSocket socket,Socket Client){
-		super("UDPThread");
-		this.serversocket=socket;
-		clientSock = Client;
+	private int clientPort;
+	private UDPThread(ServerSocket clientSock2,Database db2){
+		this.serversocket=clientSock2;
+		clientSock = db2;
 	}
 	public UDPThread(int port,String DataFile, String initFile){
 		this.port =port;
 		db = new Database(DataFile,initFile);
 	}
-	@Override
 	public void start()
 	{
 		ServerSocket serverSock;
@@ -36,18 +34,17 @@ public class UDPThread extends Thread
 			serverSock = new ServerSocket(port);
 			while(true){
 				clientSock = new ServerSocket(port);
-				Runnable runnable = new Server(clientSock,db);
+				Runnable runnable = new UDPThread(clientSock,db);
 				server = new Thread(runnable);
 				server.start();
 			}
+		}
 			catch(Exception e)
 			{
 				e.printStackTrace();
 			}
 		}
-	}
 		
-	@Override
 	public void stop(){
 		try{
 			server.join();
@@ -66,7 +63,7 @@ public class UDPThread extends Thread
         BufferedWriter bufferedWriter = null;
         String[] args;
 		try{
-				DatagramPacket recvpacket = new DatagramPacket(recvData,recv.length)
+				DatagramPacket recvpacket = new DatagramPacket(recvData,recv.length);
 				System.out.println("Waiting for Datagram Packet");
 				System.out.flush();
 				serversocket.receive(recvpacket);
