@@ -1,112 +1,119 @@
-import java.io.*;
-import java.net.*;
-import java.lang.Thread;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
+/* ------------------------------------------------------------------------- */
+/*   Copyright (C) 2016 
+Author:  bmathew2014@my.fit.edu
+Author:  rbabbitt2014@my.fit.edu
+Florida Tech, Computer Science
 
-public class UDPThread implements Runnable
-{
-	private ServerSocket serversocket =null;
-	private Thread server =null;
-	private String clientIp =null;
-	private int port =2236;
-	private ServerSocket clientSock =null;
-	private Database db;
-	private int clientPort;
-	private UDPThread(ServerSocket clientSock2,Database db2){
-		this.serversocket=clientSock2;
-		clientSock = db2;
-	}
-	public UDPThread(int port,String DataFile, String initFile){
-		this.port =port;
-		db = new Database(DataFile,initFile);
-	}
-	public void start()
-	{
-		ServerSocket serverSock;
-		try
-		{
-			serverSock = new ServerSocket(port);
-			while(true){
-				clientSock = new ServerSocket(port);
-				Runnable runnable = new UDPThread(clientSock,db);
-				server = new Thread(runnable);
-				server.start();
-			}
-		}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-			}
-		}
-		
-	public void stop(){
-		try{
-			server.join();
-		}
-		catch(InterruptedException e)
-		{
-			e.printStackTrace();
-		}
-	}
-	@Override
-	public void run(){
-		
-		InputStreamReader streamReader = null;
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published 
+by the Free Software Foundation; either the current version of the 
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.              */
+
+import java.lang.Thread;
+import java.lang.InterruptedException;
+import java.net.Socket;
+import java.net.ServerSocket;
+import java.net.SocketTimeoutException;
+
+import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import org.apache.commons.cli.Option;      
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option.Builder;
+
+public class Server implements Runnable {
+    private int port = 2236;        //default values
+    private Socket clientSock = null;
+    private Thread server = null;
+    private String clientIp = null;
+    int clientPort = -1;
+    private Database db;
+    
+    private Server (Socket client, Database db) {
+        clientSock = client;
+        this.db = db;
+    }
+
+    public Server(int port, String dataFile, String initFile) {
+        this.port = port;
+        db = new Database(dataFile, initFile);
+    }
+
+    public void start() {
+        ServerSocket serverSock;
+
+        try {
+            serverSock = new ServerSocket(port);
+            while (true) {
+                clientSock = serverSock.accept();
+                Runnable runnable = new Server(clientSock, db);
+                server = new Thread(runnable);
+                server.start();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void run() {
         BufferedReader bufferedReader = null;        
         OutputStreamWriter streamWriter = null;
         BufferedWriter bufferedWriter = null;
-        String[] args;
-		try{
-				DatagramPacket recvpacket = new DatagramPacket(recvData,recv.length);
-				System.out.println("Waiting for Datagram Packet");
-				System.out.flush();
-				serversocket.receive(recvpacket);
-				InetAddress IPaddress = recvpacket.getAddress();
-				int clientPort = recvpacket.getPort();
 
-	            InputStream inputStream = clientSock.getInputStream();
-	            streamReader = new InputStreamReader(inputStream); 
-	            bufferedReader = new BufferedReader(streamReader);
-	   
-	            OutputStream outputStream = clientSock.getOutputStream();
-	            streamWriter = new OutputStreamWriter(outputStream);
-	            bufferedWriter = new BufferedWriter(streamWriter);
+        try {
+            clientIp = clientSock.getInetAddress().getHostAddress();
+            clientPort = clientSock.getPort();
+            System.out.println("Connected to: "+clientIp+":"+clientPort);
 
-	            Parser parser = new Parser(inputStream);
-	            parser.setDatabase(db);
-	            System.out.print("From"+IPaddress+":"+port);
-				while (!clientSock.isClosed()) {
-	                parser.parse(bufferedWriter, clientIp, clientPort);
-	            }
-				System.out.println("disconnected to: " + clientIp +" using port " + clientPort);
-	            clientSock.close();
-	            bufferedWriter.close();
-	            bufferedReader.close();
-	        } catch (SocketTimeoutException e1) {
-	            System.err.println("Server Timed out: " + e1.getMessage()); 
-	        } catch (IOException e2) {
-	            System.err.println("IO Error: " + e2.getMessage());
-	        } catch (Exception e3) {
-	            e3.printStackTrace();
-	        }
-			Thread.currentThread().interrupt();	
-			serversocket.close();
-	}
-	public String getClientIp(){
-		return clientIp;
-		
-	}
-	public int getClientPort(){
-		return clientPort;
-		
-	}
-	public static void main(String[] args) {
+            InputStream inputStream = clientSock.getInputStream();
+            OutputStream outputStream = clientSock.getOutputStream();
+            streamWriter = new OutputStreamWriter(outputStream);
+            bufferedWriter = new BufferedWriter(streamWriter);
+
+            Parser parser = new Parser(inputStream);
+            parser.setDatabase(db);
+            
+            while (!clientSock.isClosed()) {
+                parser.parse(bufferedWriter, clientIp, clientPort);
+            }
+
+            System.out.println("disconnected to: "+clientIp+":"+clientPort);
+            clientSock.close();
+            bufferedWriter.close();
+            bufferedReader.close();
+        } catch (SocketTimeoutException e1) {
+            System.err.println("Server Timed out: " + e1.getMessage()); 
+        } catch (IOException e2) {
+            System.err.println("IO Error: " + e2.getMessage());
+        } catch (Exception e3) {
+            e3.printStackTrace();
+        }
+        Thread.currentThread().interrupt();
+    }
+
+    public static void main(String[] args) {
         HelpFormatter formatter = new HelpFormatter();
         int port = 2236;
 
@@ -183,5 +190,4 @@ public class UDPThread implements Runnable
             formatter.printHelp("TaskServer", options);       
         }
     }
-	
 }
