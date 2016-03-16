@@ -59,15 +59,20 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option.Builder;
 
+/*
+ * Resources:
+ * http://www.java2s.com/Code/Java/Network-Protocol/HandlesTCPandUDPconnectionsandprovidesexceptionhandlinganderrorlogging.htm
+ */
+
 public class Server extends StringWriter implements Runnable {
     private int port = 2236;
     private Thread server = null;
     private Database db;
-    
+
     private Socket clientSock = null;
     private String clientIp = null;
     private int clientPort = -1;
-    
+
     private DatagramChannel udpChannel = null;
     private ServerSocketChannel tcpChannel = null;
     private SocketAddress socket = null;
@@ -77,7 +82,7 @@ public class Server extends StringWriter implements Runnable {
         this.port = port;
         db = new Database(dataFile, initFile);
     }
-    
+
     public Server(Socket client, Database db) {
         clientSock = client;
         this.db = db;
@@ -88,7 +93,7 @@ public class Server extends StringWriter implements Runnable {
         SocketAddress address = new InetSocketAddress(port);
         BufferedWriter writer = new BufferedWriter(this);
         ByteBuffer buffer = ByteBuffer.allocate(1024);
-        
+
         try {
             tcpChannel = ServerSocketChannel.open();
             tcpChannel.configureBlocking(false);
@@ -124,11 +129,12 @@ public class Server extends StringWriter implements Runnable {
                         }
                     } else if (key.isReadable() && channel == udpChannel) {
                         stream = new ByteArrayInputStream(buffer.array());
-                        socket = udpChannel.receive(buffer); 
-                        InetSocketAddress inet = (InetSocketAddress)socket;  
+                        socket = udpChannel.receive(buffer);
+                        InetSocketAddress inet = (InetSocketAddress)socket;
                         if (socket != null) {
                             InetAddress ip = inet.getAddress();
                             int port = inet.getPort();
+                            System.out.print("UDP: ");
                             System.out.println(ip.getHostAddress()+":"+port);
 
                             Parser parser = new Parser(stream);
@@ -145,10 +151,9 @@ public class Server extends StringWriter implements Runnable {
             e.printStackTrace();
         }
     }
-    
+
     @Override
     public void run() {
-        BufferedReader bufferedReader = null;
         OutputStreamWriter streamWriter = null;
         BufferedWriter bufferedWriter = null;
 
@@ -172,7 +177,6 @@ public class Server extends StringWriter implements Runnable {
             System.out.println("disconnected to: "+clientIp+":"+clientPort);
             clientSock.close();
             bufferedWriter.close();
-            bufferedReader.close();
         } catch (SocketTimeoutException e1) {
             System.err.println("Server Timed out: " + e1.getMessage());
         } catch (IOException e2) {
@@ -182,7 +186,7 @@ public class Server extends StringWriter implements Runnable {
         }
         Thread.currentThread().interrupt();
     }
-    
+
     @Override
     public void write(String s) {
         try {
