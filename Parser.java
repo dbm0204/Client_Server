@@ -16,55 +16,35 @@ public class Parser implements ParserConstants {
   final public void parse(BufferedWriter writer, String ip, int port) throws ParseException {
     try {
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case PROJECT_DEFINITION:
-      case TAKE:
-      case GET_PROJECTS:
       case GET_PROJECT:{
-        switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-        case GET_PROJECT:{
-          jj_consume_token(GET_PROJECT);
-          jj_consume_token(END);
+        jj_consume_token(GET_PROJECT);
+        jj_consume_token(END);
 get_project(writer);
-          jj_consume_token(EOL);
-          break;
-          }
-        case PROJECT_DEFINITION:{
-          jj_consume_token(PROJECT_DEFINITION);
-          jj_consume_token(COLON);
-project_definition(writer);
-          jj_consume_token(EOL);
-          break;
-          }
-        case TAKE:{
-          jj_consume_token(TAKE);
-          jj_consume_token(END);
-take(writer, ip, port);
-          jj_consume_token(EOL);
-          break;
-          }
-        case GET_PROJECTS:{
-          jj_consume_token(GET_PROJECTS);
-get_projects(writer);
-          jj_consume_token(EOL);
-          break;
-          }
-        default:
-          jj_la1[0] = jj_gen;
-          jj_consume_token(-1);
-          throw new ParseException();
-        }
         break;
         }
-      case EOL:{
-        jj_consume_token(EOL);
-{if ("" != null) return;}
+      case PROJECT_DEFINITION:{
+        jj_consume_token(PROJECT_DEFINITION);
+        jj_consume_token(COLON);
+project_definition(writer);
+        break;
+        }
+      case TAKE:{
+        jj_consume_token(TAKE);
+        jj_consume_token(END);
+take(writer, ip, port);
+        break;
+        }
+      case GET_PROJECTS:{
+        jj_consume_token(GET_PROJECTS);
+get_projects(writer);
         break;
         }
       default:
-        jj_la1[1] = jj_gen;
-        jj_consume_token(-1);
-        throw new ParseException();
+        jj_la1[0] = jj_gen;
+{if ("" != null) return;}
       }
+      jj_consume_token(EOL);
+parse(writer, ip, port);
     } catch (ParseException e) {
 Token token=null;
         write(writer,"Fail;");
@@ -97,7 +77,7 @@ success = db.createProject(proj.toString());
         break;
         }
       default:
-        jj_la1[2] = jj_gen;
+        jj_la1[1] = jj_gen;
         break label_1;
       }
       task(writer, proj);
@@ -193,13 +173,13 @@ try {
   public Token jj_nt;
   private int jj_ntk;
   private int jj_gen;
-  final private int[] jj_la1 = new int[3];
+  final private int[] jj_la1 = new int[2];
   static private int[] jj_la1_0;
   static {
       jj_la1_init_0();
    }
    private static void jj_la1_init_0() {
-      jj_la1_0 = new int[] {0xca,0x800ca,0x1000000,};
+      jj_la1_0 = new int[] {0xca,0x1000000,};
    }
 
   /** Constructor with InputStream. */
@@ -213,7 +193,7 @@ try {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 3; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 2; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -227,7 +207,7 @@ try {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 3; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 2; i++) jj_la1[i] = -1;
   }
 
   /** Constructor. */
@@ -237,7 +217,7 @@ try {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 3; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 2; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -247,7 +227,7 @@ try {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 3; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 2; i++) jj_la1[i] = -1;
   }
 
   /** Constructor with generated Token Manager. */
@@ -256,7 +236,7 @@ try {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 3; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 2; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -265,7 +245,7 @@ try {
     token = new Token();
     jj_ntk = -1;
     jj_gen = 0;
-    for (int i = 0; i < 3; i++) jj_la1[i] = -1;
+    for (int i = 0; i < 2; i++) jj_la1[i] = -1;
   }
 
   private Token jj_consume_token(int kind) throws ParseException {
@@ -321,7 +301,7 @@ try {
       la1tokens[jj_kind] = true;
       jj_kind = -1;
     }
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 2; i++) {
       if (jj_la1[i] == jj_gen) {
         for (int j = 0; j < 32; j++) {
           if ((jj_la1_0[i] & (1<<j)) != 0) {

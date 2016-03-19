@@ -82,11 +82,12 @@ void parse(BufferedWriter writer, String ip, int port):
 {}
 {
     try {
-        (<GET_PROJECT><END> { get_project(writer); } <EOL>
-        |<PROJECT_DEFINITION><COLON>{ project_definition(writer);}<EOL>
-        |<TAKE><END> { take(writer, ip, port); } <EOL>
-        |<GET_PROJECTS> { get_projects(writer); }<EOL>)
-        |<EOL> { return; }
+        (<GET_PROJECT><END> { get_project(writer); }
+        |<PROJECT_DEFINITION><COLON>{ project_definition(writer); }
+        |<TAKE><END> { take(writer, ip, port); }
+        |<GET_PROJECTS> { get_projects(writer); }
+        |{ return; }) 
+        <EOL> { parse(writer, ip, port); }
     } catch (ParseException e) {
         Token token=null;
         write(writer,"Fail;");
