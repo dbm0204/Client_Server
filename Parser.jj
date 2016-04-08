@@ -78,131 +78,80 @@ TOKEN: {
 }
 
 
-void parse(BufferedWriter writer, String ip, int port): 
+void parse(): 
 {}
 {
     try {
-        (<GET_PROJECT><END> { get_project(writer); }
-        |<PROJECT_DEFINITION><COLON>{ project_definition(writer); }
-        |<TAKE><END> { take(writer, ip, port); }
-        |<GET_PROJECTS> { get_projects(writer); }
+        (<GET_PROJECT><END> { get_project(); }
+        |<PROJECT_DEFINITION><COLON>{ project_definition(); }
+        |<TAKE><END> { take(); }
+        |<GET_PROJECTS> { get_projects(); }
         |{ return; }) 
-        <EOL> { parse(writer, ip, port); }
+        <EOL> { parse(); }
     } catch (ParseException e) {
         Token token=null;
-        write(writer,"Fail;");
         do {
             token = getNextToken();
-            write(writer,token.toString());
         } while (token.kind != EOL);
-        write(writer,"\n");
     }
 }
 
-void project_definition(BufferedWriter writer):
-{ Token proj=null, tasks=null; boolean success=false; }
+void project_definition():
+{ Token proj=null, tasks=null; ASNProject project; }
 {
     proj=<VARIABLE><END>
     <TASKS><COLON> tasks=<DIGIT><END>
     {
-        success = db.createProject(proj.toString());
-        if (!success) {
-            write(writer,"Fail;PROJECT_DEFINITION:"+proj.toString()+";\n");
-            return;
-        }
-        write(writer,"OK;PROJECT_DEFINITION:" + proj.toString() +"\n");
+        project = new ASNProject();
     }
-    (task(writer, proj))*
+    (task(project))*
+    {
+        System.out.println(project.toString());
+    }
 }
 
-void task(BufferedWriter writer, Token proj):
+void task(ASNProject project):
 { Token task=null, start=null, end=null; boolean success=false; }
 {
     task=<VARIABLE><END>
     start=<DATETIME><END>
     end=<DATETIME><END>
     { 
-        success = db.createTask(proj.toString(), 
-                                task.toString(), 
-                                start.toString(), 
-                                end.toString());
-        if (!success) {
-            write(writer,"Fail;"+task.toString() +
-                         ":"+start.toString() +
-                         ";"+end.toString() + ";\n");
-        }
+        project.addTask(new ASNTask(task.toString(),
+                                    start.toString(),
+                                    end.toString()));
     }
 }
 
-void take(BufferedWriter writer, String ip, int port):
+void take():
 { Token user=null, proj=null, task=null; boolean success=false; }
 {
     <USER><COLON> user=<VARIABLE> <END>
     <PROJECT><COLON> proj=<VARIABLE> <END>
     task=<VARIABLE>
     {
-        success = db.assignTask(proj.toString(), task.toString(), user.toString()); 
-        if (success && ip != null) {
-            success = db.updateUser(user.toString(), ip, port);
-        }
-        if (!success) {
-            write(writer,"FAIL;TAKE;USER:"+user.toString()+
-                         ";PROJECT"+proj+";"+task.toString());
-            return;
-        }
-        write(writer,"OK;TAKE;USER:"+user.toString()+
-                     ";PROJECT:"+proj.toString()+";"+
-                     task.toString() + "\n");   
+        ASNTake take;
+        take = new ASNTake(proj.toString(), task.toString(), user.toString());
+        System.out.println(take.toString());
     }
 }
 
-void get_projects(BufferedWriter writer):
+void get_projects():
 {}
 {
     {
-        ArrayList<String> projects = db.getProjects();
-        if (projects == null) {
-            write(writer, "FAIL;GET_PROJECTS;" + "\n");
-            return;
-        }
-        write(writer, "OK;PROJECTS:"+projects.size());
-        for (int i = 0; i < projects.size(); i++) {
-            write(writer, ";" + projects.get(i));
-        }
-        write(writer, "\n");
+        ASNProjects getProjects = new ASNProjects();
+        System.out.println(getProjects.toString());
     }
 }
 
-void get_project(BufferedWriter writer):
+void get_project():
 { Token project=null; }
 {
     project=<VARIABLE>
     {
-        ArrayList<Task> tasks = db.getProject(project.toString());
-        if (tasks == null) {
-            write(writer, "FAIL;GET_PROJECT;" + project.toString() + "\n");
-            return;
-        }
-        String buffer = "OK;PROJECT_DEFINITION:" + project.toString() + 
-                        ";TASKS:"+tasks.size()+";";
-        
-        for (int i = 0; i < tasks.size(); i++) {
-            buffer += tasks.get(i).toString();
-        }
-        write(writer, buffer + "\n");
+        ASNGetProject getProject = new ASNGetProject();
+        System.out.println(getProject.toString());
     } 
-}
-
-void write(BufferedWriter writer, String msg):
-{}
-{
-    {
-        try {
-            writer.write(msg);
-            writer.flush();
-        } catch (Exception e) {
-            System.err.print("Failed to write: " + e.getMessage() + "\n");
-        }
-    }
 }
 

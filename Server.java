@@ -139,7 +139,7 @@ public class Server extends StringWriter implements Runnable {
 
                             Parser parser = new Parser(stream);
                             parser.setDatabase(db);
-                            parser.parse(writer, ip.getHostAddress(), port);
+                            //parser.parse(writer, ip.getHostAddress(), port);
                             write(toString());
                         }
                         buffer.clear();
@@ -171,7 +171,7 @@ public class Server extends StringWriter implements Runnable {
             parser.setDatabase(db);
 
             while (!clientSock.isClosed()) {
-                parser.parse(bufferedWriter, clientIp, clientPort);
+                //parser.parse(bufferedWriter, clientIp, clientPort);
             }
 
             System.out.println("disconnected to: "+clientIp+":"+clientPort);

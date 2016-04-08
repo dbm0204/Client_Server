@@ -13,30 +13,30 @@ public class Parser implements ParserConstants {
     this.db = db;
   }
 
-  final public void parse(BufferedWriter writer, String ip, int port) throws ParseException {
+  final public void parse() throws ParseException {
     try {
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
       case GET_PROJECT:{
         jj_consume_token(GET_PROJECT);
         jj_consume_token(END);
-get_project(writer);
+get_project();
         break;
         }
       case PROJECT_DEFINITION:{
         jj_consume_token(PROJECT_DEFINITION);
         jj_consume_token(COLON);
-project_definition(writer);
+project_definition();
         break;
         }
       case TAKE:{
         jj_consume_token(TAKE);
         jj_consume_token(END);
-take(writer, ip, port);
+take();
         break;
         }
       case GET_PROJECTS:{
         jj_consume_token(GET_PROJECTS);
-get_projects(writer);
+get_projects();
         break;
         }
       default:
@@ -44,31 +44,23 @@ get_projects(writer);
 {if ("" != null) return;}
       }
       jj_consume_token(EOL);
-parse(writer, ip, port);
+parse();
     } catch (ParseException e) {
 Token token=null;
-        write(writer,"Fail;");
         do {
             token = getNextToken();
-            write(writer,token.toString());
         } while (token.kind != EOL);
-        write(writer,"\u005cn");
     }
   }
 
-  final public void project_definition(BufferedWriter writer) throws ParseException {Token proj=null, tasks=null; boolean success=false;
+  final public void project_definition() throws ParseException {Token proj=null, tasks=null; ASNProject project;
     proj = jj_consume_token(VARIABLE);
     jj_consume_token(END);
     jj_consume_token(TASKS);
     jj_consume_token(COLON);
     tasks = jj_consume_token(DIGIT);
     jj_consume_token(END);
-success = db.createProject(proj.toString());
-        if (!success) {
-            write(writer,"Fail;PROJECT_DEFINITION:"+proj.toString()+";\u005cn");
-            {if ("" != null) return;}
-        }
-        write(writer,"OK;PROJECT_DEFINITION:" + proj.toString() +"\u005cn");
+project = new ASNProject();
     label_1:
     while (true) {
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
@@ -80,29 +72,25 @@ success = db.createProject(proj.toString());
         jj_la1[1] = jj_gen;
         break label_1;
       }
-      task(writer, proj);
+      task(project);
     }
+System.out.println(project.toString());
   }
 
-  final public void task(BufferedWriter writer, Token proj) throws ParseException {Token task=null, start=null, end=null; boolean success=false;
+  final public void task(ASNProject project) throws ParseException {Token task=null, start=null, end=null; boolean success=false;
     task = jj_consume_token(VARIABLE);
     jj_consume_token(END);
     start = jj_consume_token(DATETIME);
     jj_consume_token(END);
     end = jj_consume_token(DATETIME);
     jj_consume_token(END);
-success = db.createTask(proj.toString(),
-                                task.toString(),
-                                start.toString(),
-                                end.toString());
-        if (!success) {
-            write(writer,"Fail;"+task.toString() +
-                         ":"+start.toString() +
-                         ";"+end.toString() + ";\u005cn");
-        }
+System.out.println("adding task");
+        project.addTask(new ASNTask(task.toString(),
+                                    start.toString(),
+                                    end.toString()));
   }
 
-  final public void take(BufferedWriter writer, String ip, int port) throws ParseException {Token user=null, proj=null, task=null; boolean success=false;
+  final public void take() throws ParseException {Token user=null, proj=null, task=null; boolean success=false;
     jj_consume_token(USER);
     jj_consume_token(COLON);
     user = jj_consume_token(VARIABLE);
@@ -112,56 +100,23 @@ success = db.createTask(proj.toString(),
     proj = jj_consume_token(VARIABLE);
     jj_consume_token(END);
     task = jj_consume_token(VARIABLE);
-success = db.assignTask(proj.toString(), task.toString(), user.toString());
-        if (success && ip != null) {
-            success = db.updateUser(user.toString(), ip, port);
-        }
-        if (!success) {
-            write(writer,"FAIL;TAKE;USER:"+user.toString()+
-                         ";PROJECT"+proj+";"+task.toString());
-            {if ("" != null) return;}
-        }
-        write(writer,"OK;TAKE;USER:"+user.toString()+
-                     ";PROJECT:"+proj.toString()+";"+
-                     task.toString() + "\u005cn");
+ASNTake take;
+        System.out.println("assigning task");
+        take = new ASNTake(proj.toString(), task.toString(), user.toString());
+        System.out.println(take.toString());
   }
 
-  final public void get_projects(BufferedWriter writer) throws ParseException {
-ArrayList<String> projects = db.getProjects();
-        if (projects == null) {
-            write(writer, "FAIL;GET_PROJECTS;" + "\u005cn");
-            {if ("" != null) return;}
-        }
-        write(writer, "OK;PROJECTS:"+projects.size());
-        for (int i = 0; i < projects.size(); i++) {
-            write(writer, ";" + projects.get(i));
-        }
-        write(writer, "\u005cn");
+  final public void get_projects() throws ParseException {
+System.out.println("getting projects");
+        ASNProjects getProjects = new ASNProjects();
+        System.out.println(getProjects.toString());
   }
 
-  final public void get_project(BufferedWriter writer) throws ParseException {Token project=null;
+  final public void get_project() throws ParseException {Token project=null;
     project = jj_consume_token(VARIABLE);
-ArrayList<Task> tasks = db.getProject(project.toString());
-        if (tasks == null) {
-            write(writer, "FAIL;GET_PROJECT;" + project.toString() + "\u005cn");
-            {if ("" != null) return;}
-        }
-        String buffer = "OK;PROJECT_DEFINITION:" + project.toString() +
-                        ";TASKS:"+tasks.size()+";";
-
-        for (int i = 0; i < tasks.size(); i++) {
-            buffer += tasks.get(i).toString();
-        }
-        write(writer, buffer + "\u005cn");
-  }
-
-  final public void write(BufferedWriter writer, String msg) throws ParseException {
-try {
-            writer.write(msg);
-            writer.flush();
-        } catch (Exception e) {
-            System.err.print("Failed to write: " + e.getMessage() + "\u005cn");
-        }
+System.out.println("getting project");
+        ASNGetProject getProject = new ASNGetProject();
+        System.out.println(getProject.toString());
   }
 
   /** Generated Token Manager. */
