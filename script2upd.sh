@@ -7,5 +7,5 @@ echo -e "Since all the dates are in the past, " \
         "return as done and the others will be waiting" \
         "\n\n"
 
-echo -e $msg | nc localhost -u 2356
+echo -e $msg | java -cp .:lib/* Client -a "localhost" -p 2356 -u
 
