@@ -2,7 +2,8 @@
  * Task ::= [1] SEQUENCE {
  *    name UTF8String,
  *    start GeneralizedTime,
- *    end GeneralizedTime
+ *    end GeneralizedTime,
+ *    user UTF8String,
  *    ip UTF8String,
  *    port INTEGER,
  *    done BOOLEAN
@@ -22,6 +23,7 @@ class ASNTask extends ASNObj implements Cloneable {
     private String name = null;
     private Calendar start = null;
     private Calendar end = null;
+    private String user = null;
     private String ip = null;
     private int port = 0;
     private boolean done = false;
@@ -34,19 +36,22 @@ class ASNTask extends ASNObj implements Cloneable {
     
     public ASNTask (String name, 
                     Calendar start, 
-                    Calendar end, 
+                    Calendar end,
+                    String user,
                     String ip, 
                     int port, 
                     boolean done) {
         this.name = name;
         this.start = start;
         this.end = end;
+        this.user = user;
         this.ip = ip;
         this.port = port;
         this.done = done;
     }
     
     public ASNTask (String name, String start, String end) {
+        this.name = name;
         try {
             this.start = Calendar.getInstance();
             this.end = Calendar.getInstance();
@@ -56,7 +61,29 @@ class ASNTask extends ASNObj implements Cloneable {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    } 
+    }
+    
+    public String getName() {
+        return name;
+    }
+    
+    public String getStartTime() {
+        return fmt.format(start.getTime());
+    }
+    
+    public String getEndTime() {
+        return fmt.format(start.getTime());
+    }
+    
+    public void assign(String user, String ip, int port) {
+        this.user = user;
+        this.ip = ip;
+        this.port = port;
+    }
+    
+    public void setStatus(boolean isDone) {
+    	done = isDone;
+    }
     
     @Override
     public Encoder getEncoder() {
@@ -66,6 +93,7 @@ class ASNTask extends ASNObj implements Cloneable {
         .addToSequence(new Encoder(name))
         .addToSequence(new Encoder(start))
         .addToSequence(new Encoder(end))
+        .addToSequence(new Encoder(user))
         .addToSequence(new Encoder(ip))
         .addToSequence(new Encoder(port))
         .addToSequence(new Encoder(done));
@@ -82,6 +110,7 @@ class ASNTask extends ASNObj implements Cloneable {
             .getGeneralizedTimeCalender(Encoder.TAG_GeneralizedTime);
         end = decoder.getFirstObject(true)
             .getGeneralizedTimeCalender(Encoder.TAG_GeneralizedTime);
+        user = decoder.getFirstObject(true).getString();
         ip = decoder.getFirstObject(true).getString();
         port = decoder.getFirstObject(true).getInteger(Encoder.TAG_INTEGER).intValue();
         done = decoder.getFirstObject(true).getBoolean();
@@ -92,7 +121,7 @@ class ASNTask extends ASNObj implements Cloneable {
     @Override
     public Object clone() {
         try {
-            return new ASNTask(name, start, end, ip, port, done);
+            return new ASNTask(name, start, end, user, ip, port, done);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -104,18 +133,23 @@ class ASNTask extends ASNObj implements Cloneable {
         return "Name: " + name + "\n" +
                "start: " + start.getTime() + "\n" +
                "end: " + end.getTime() + "\n" + 
+               "user: " + user + "\n" + 
                "ip: " + ip  + "\n" +
                "port: " + port + "\n" +
                "done: " + done + "\n";
     }
     
     public static void main (String[] args) throws ASN1DecoderFail {
+    	String user = "larry";
         Calendar start = Calendar.getInstance();
         Calendar end = Calendar.getInstance();
         String ip = "127.0.0.0";
         int port = 1111;
         boolean done = true;
-        ASNTask write = new ASNTask("John Doe", start, end, ip, port, done);
+        ASNTask write = new ASNTask("John Doe", start, end, ip, user, port, done);
+        
+        System.out.println(write.getStartTime());
+        System.out.println(write.getEndTime());
         
         byte[] msg = write.encode();
         

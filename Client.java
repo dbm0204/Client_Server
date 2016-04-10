@@ -1,8 +1,4 @@
 import java.util.Scanner;
-import java.util.Calendar;
-import net.ddp2p.ASN1.Encoder;
-import java.io.InputStream;
-import java.io.ByteArrayInputStream;
 
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -17,14 +13,6 @@ public class Client {
 
     public static void main(String[] args) {
         HelpFormatter formatter = new HelpFormatter();
-        
-        Option command_option = Option.builder("c")
-            .required(true)
-            .longOpt("command")
-            .desc("command to run on server")
-            .argName("command")
-            .hasArg()
-            .build();
 
         Option tcp_option = Option.builder("t")
             .required(false)
@@ -45,17 +33,33 @@ public class Client {
             .desc("display help menu")
             .build();
 
-
+        Option port_option = Option.builder("p")
+            .required(true)
+            .longOpt("port")
+            .desc("port of the server to connect to")
+            .argName("port")
+            .hasArg()
+            .build();
+            
+        Option ip_option = Option.builder("a")
+            .required(true)
+            .longOpt("address")
+            .desc("ip address of the server to connect to")
+            .argName("address")
+            .build();            
+            
         Options options = new Options();
-        options.addOption(command_option);
         options.addOption(tcp_option);
         options.addOption(udp_option);
         options.addOption(help_option);
+        options.addOption(port_option);
+        options.addOption(ip_option);
 
         try {
             CommandLineParser parser = new DefaultParser();
             CommandLine cmd = parser.parse(options, args);
-            String command = null;
+            String ip = null;
+            int port = 0;
             boolean isTCP = true;
 
             if (cmd.hasOption("h")) {
@@ -70,16 +74,17 @@ public class Client {
             if (cmd.hasOption("u")) {
                 isTCP = false;
             }
-
-            if (cmd.hasOption("c")) {
-                command = cmd.getOptionValue("c");
+            
+            if (cmd.hasOption("p")) {
+                port = Integer.parseInt(cmd.getOptionValue("p"));
             }
-            assert(command != null);
+             
+            if (cmd.hasOption("a")) {
+                ip = cmd.getOptionValue("a");
+            }
 
-
-            InputStream stream;
-            stream = new ByteArrayInputStream(command.getBytes());
-            Parser cmd_parser = new Parser(stream);
+            Parser cmd_parser = new Parser(System.in);
+            cmd_parser.setServer(ip, port, isTCP);
             cmd_parser.parse();
 
         } catch (ParseException pe) {

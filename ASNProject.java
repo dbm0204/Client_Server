@@ -17,9 +17,14 @@ class ASNProject extends ASNObj  implements Cloneable {
 
     public ASNProject () {
     }
+    
+    public ASNProject (String name) {
+        this.name = name;
+        tasks = null;
+    }
 
     public ASNProject (String name, ASNTask tasks[]) {
-        this.name = name;
+        this(name);
         if (tasks != null) {
             this.tasks = new ASNTask[tasks.length];
             for (int i = 0; i < tasks.length; i++) {
@@ -36,6 +41,14 @@ class ASNProject extends ASNObj  implements Cloneable {
         }
         tmp[tmp.length-1] = t;
         tasks = tmp;
+    }
+    
+    public String getName() {
+        return name;
+    }
+    
+    public ASNTask[] getTasks() {
+        return tasks;
     }
 
     @Override
@@ -78,6 +91,7 @@ class ASNProject extends ASNObj  implements Cloneable {
     @Override
     public String toString() {
         String output = "Name: " + name + "\n";
+        if (tasks == null) return output;
         for (int i = 0; i < tasks.length; i++) {
             output += "task: " + tasks[i].toString() + "\n";
         }
@@ -86,16 +100,17 @@ class ASNProject extends ASNObj  implements Cloneable {
     }
 
     public static void main (String[] args) throws ASN1DecoderFail {
-        String name = "John Doe";
+        String name = "Write";
+        String user = "joe";
         Calendar start = Calendar.getInstance();
         Calendar end = Calendar.getInstance();
         String ip = "127.0.0.0";
         int port = 1111;
         boolean done = true;
-        ASNTask write0 = new ASNTask(name, start, end, ip, port, done);
-        ASNTask write1 = new ASNTask(name, start, end, ip, port, done);
-        ASNTask write2 = new ASNTask(name, start, end, ip, port, done);
-        ASNTask write3 = new ASNTask(name, start, end, ip, port, done);
+        ASNTask write0 = new ASNTask(name, start, end, user, ip, port, done);
+        ASNTask write1 = new ASNTask(name, start, end, user, ip, port, done);
+        ASNTask write2 = new ASNTask(name, start, end, user, ip, port, done);
+        ASNTask write3 = new ASNTask(name, start, end, user, ip, port, done);
         ASNTask tasks[] = {write0, write1, write2, write3};
 
         ASNProject project = new ASNProject("project1", tasks);

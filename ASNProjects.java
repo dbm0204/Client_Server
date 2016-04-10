@@ -25,6 +25,7 @@ class ASNProjects extends ASNObj  implements Cloneable {
     public ASNProjects decode (Decoder dec) throws ASN1DecoderFail{
         Decoder decoder = dec.getContent();
 
+        if (decoder.getTypeByte() != 0) throw new ASN1DecoderFail("Extra objects!");
         return this;
     }
 

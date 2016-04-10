@@ -24,17 +24,32 @@ options {
 
 PARSER_BEGIN(Parser)
 
+
+import net.ddp2p.ASN1.*;
 import java.util.ArrayList;
+import java.util.Arrays;
+
 import java.io.BufferedWriter;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import java.net.InetAddress;
+import java.net.DatagramSocket;
+import java.net.DatagramPacket;
+import java.net.Socket;
 
 public class Parser {
-  static Database db = null;
-
+  String ip = null;
+  int port = 0;
+  boolean isTCP = true;
+  
   public static void main(String args[]) {
   }
   
-  public void setDatabase(Database db) {
-    this.db = db;
+  public void setServer(String ip, int port, boolean isTCP) {
+    this.ip = ip;
+    this.port = port;
+    this.isTCP = isTCP;
   }
 }
 
@@ -102,11 +117,12 @@ void project_definition():
     proj=<VARIABLE><END>
     <TASKS><COLON> tasks=<DIGIT><END>
     {
-        project = new ASNProject();
+        project = new ASNProject(proj.toString());
     }
     (task(project))*
     {
-        System.out.println(project.toString());
+        ASNEvent event = new ASNEvent(ASNEvent.PROJECT, project);
+        send(event.encode());
     }
 }
 
@@ -132,7 +148,8 @@ void take():
     {
         ASNTake take;
         take = new ASNTake(proj.toString(), task.toString(), user.toString());
-        System.out.println(take.toString());
+        ASNEvent event = new ASNEvent(ASNEvent.TAKE, take);
+        send(event.encode());
     }
 }
 
@@ -141,7 +158,8 @@ void get_projects():
 {
     {
         ASNProjects getProjects = new ASNProjects();
-        System.out.println(getProjects.toString());
+        ASNEvent event = new ASNEvent(ASNEvent.PROJECTS, getProjects);
+        send(event.encode());
     }
 }
 
@@ -150,8 +168,71 @@ void get_project():
 {
     project=<VARIABLE>
     {
-        ASNGetProject getProject = new ASNGetProject();
-        System.out.println(getProject.toString());
+        ASNProject getProject = new ASNProject(project.toString());
+        ASNEvent event = new ASNEvent(ASNEvent.GETPROJECT, getProject);
+        send(event.encode());
     } 
 }
+
+void send(byte[] msg):
+{}
+{
+    {
+        if(isTCP) {
+            sendTCP(msg);  
+        } else {
+            sendUDP(msg);
+        }
+    }   
+}
+
+void sendTCP(byte[] msg):
+{ Socket socket = null; }
+{
+    {
+        assert(ip != null);
+        try {
+            socket = new Socket(ip, port);
+            InputStream reader = socket.getInputStream();
+            OutputStream out = socket.getOutputStream();
+            out.write(msg);
+            out.flush();
+
+             byte[] buffer = new byte[10000];
+             int readBytes = reader.read(buffer);
+             Decoder decoder = new Decoder(Arrays.copyOfRange(buffer, 0, readBytes));
+             ASNEvent event = new ASNEvent().decode(decoder);
+             System.out.println(event.toString());
+             socket.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }   
+}
+
+void sendUDP(byte[] msg):
+{DatagramSocket socket = null; DatagramPacket packet = null;}
+{
+    {
+        assert(ip != null);
+        try {
+            socket = new DatagramSocket();
+            InetAddress IpAddress = InetAddress.getByName(ip);
+            packet = new DatagramPacket(msg, msg.length, IpAddress, port);
+            socket.send(packet);
+            
+            byte[] buffer = new byte[10000];
+            packet = new DatagramPacket(buffer, buffer.length);
+            socket.receive(packet);
+            
+            Decoder decoder = new Decoder(buffer);
+            ASNEvent event = new ASNEvent().decode(decoder);
+            System.out.println(event.toString());
+            socket.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }   
+}
+
 

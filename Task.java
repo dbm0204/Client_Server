@@ -54,6 +54,35 @@ public class Task {
         Date now = new Date();
         return (now.after(end) && user!=null) ? "DONE":"WAITING";
     }
+    
+    public String getName() {
+    	return task;
+    }
+    
+    public String getUser() {
+    	return user;
+    }
+    
+    public String getStartTime() {
+    	return fmt.format(start);
+    }
+    
+    public String getEndTime() {
+    	return fmt.format(end);
+    }
+    
+    public String getIp() {
+    	return ip;
+    }
+    
+    public int getPort() {
+    	return port;
+    }
+    
+    public boolean isDone() {
+    	 Date now = new Date();
+         return (now.after(end) && user!=null) ? true:false;
+    }
 
     @Override
     public String toString() {

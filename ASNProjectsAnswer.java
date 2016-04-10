@@ -51,7 +51,7 @@ class ASNProjectsAnswer extends ASNObj  implements Cloneable {
     @Override
     public Object clone() {
         try {
-            if (projects.length > 0) {
+            if (projects != null) {
                 return new ASNProjectsAnswer(projects);
             }
             return new ASNProjectsAnswer();
@@ -63,24 +63,26 @@ class ASNProjectsAnswer extends ASNObj  implements Cloneable {
 
     @Override
     public String toString() {
-        String output = "";
+        String output = "Projects: ";
+        if (projects == null) return output;
         for (int i = 0; i < projects.length; i++) {
-            output += "projects: " + projects[i].toString() + "\n";
+            output += "project " + i + ": " + projects[i].toString() + "\n";
         }
 
         return output;
     }
 
     public static void main (String[] args) throws ASN1DecoderFail {
+    	String user = "larry";
         Calendar start = Calendar.getInstance();
         Calendar end = Calendar.getInstance();
         String ip = "127.0.0.0";
         int port = 1111;
         boolean done = true;
-        ASNTask write0 = new ASNTask("John Doe", start, end, ip, port, done);
-        ASNTask write1 = new ASNTask("John Doe", start, end, ip, port, done);
-        ASNTask write2 = new ASNTask("John Doe", start, end, ip, port, done);
-        ASNTask write3 = new ASNTask("John Doe", start, end, ip, port, done);
+        ASNTask write0 = new ASNTask("John Doe", start, end, user, ip, port, done);
+        ASNTask write1 = new ASNTask("John Doe", start, end, user, ip, port, done);
+        ASNTask write2 = new ASNTask("John Doe", start, end, user, ip, port, done);
+        ASNTask write3 = new ASNTask("John Doe", start, end, user, ip, port, done);
         ASNTask tasks[] = {write0, write1, write2, write3};
 
         ASNProject project0 = new ASNProject("project1", tasks);

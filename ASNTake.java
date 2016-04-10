@@ -26,6 +26,18 @@ class ASNTake extends ASNObj implements Cloneable {
         this.user = user;
     } 
     
+    public String getProject() {
+        return proj;
+    }
+    
+    public String getTask() {
+        return task;
+    }
+    
+    public String getUser() {
+        return user;
+    }
+    
     @Override
     public Encoder getEncoder() {
     

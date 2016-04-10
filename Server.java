@@ -20,11 +20,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.              */
 
 import java.util.Set;
 import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 import java.lang.Thread;
 import java.lang.InterruptedException;
 import java.net.ServerSocket;
 import java.net.SocketTimeoutException;
+import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.InetAddress;
@@ -59,6 +62,8 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option.Builder;
 
+import net.ddp2p.ASN1.*;
+
 /*
  * Resources:
  * http://www.java2s.com/Code/Java/Network-Protocol/HandlesTCPandUDPconnectionsandprovidesexceptionhandlinganderrorlogging.htm
@@ -76,6 +81,8 @@ public class Server extends StringWriter implements Runnable {
     private DatagramChannel udpChannel = null;
     private ServerSocketChannel tcpChannel = null;
     private SocketAddress socket = null;
+    private InputStream inputStream = null;
+    private OutputStream outputStream = null;
 
     public Server(int port, String dataFile, String initFile) {
         super();
@@ -92,7 +99,7 @@ public class Server extends StringWriter implements Runnable {
         InputStream stream = null;
         SocketAddress address = new InetSocketAddress(port);
         BufferedWriter writer = new BufferedWriter(this);
-        ByteBuffer buffer = ByteBuffer.allocate(1024);
+        ByteBuffer buffer = ByteBuffer.allocate(10240);
 
         try {
             tcpChannel = ServerSocketChannel.open();
@@ -128,7 +135,7 @@ public class Server extends StringWriter implements Runnable {
                             server.start();
                         }
                     } else if (key.isReadable() && channel == udpChannel) {
-                        stream = new ByteArrayInputStream(buffer.array());
+                        //stream = new ByteArrayInputStream(buffer.array());
                         socket = udpChannel.receive(buffer);
                         InetSocketAddress inet = (InetSocketAddress)socket;
                         if (socket != null) {
@@ -136,11 +143,20 @@ public class Server extends StringWriter implements Runnable {
                             int port = inet.getPort();
                             System.out.print("UDP: ");
                             System.out.println(ip.getHostAddress()+":"+port);
-
-                            Parser parser = new Parser(stream);
-                            parser.setDatabase(db);
+                            clientIp = ip.getHostAddress();
+                            clientPort = port;
+                            //Parser parser = new Parser(stream);
+                            //parser.setDatabase(db);
                             //parser.parse(writer, ip.getHostAddress(), port);
-                            write(toString());
+                            //write(toString());
+
+                            byte[] result = loadASN(buffer.array());
+                            
+                            DatagramSocket socket = new DatagramSocket();
+                            DatagramPacket packet = null;
+                            packet = new DatagramPacket(result, result.length, ip, port);
+                            socket.send(packet);
+                            socket.close();
                         }
                         buffer.clear();
                         getBuffer().setLength(0);
@@ -162,17 +178,22 @@ public class Server extends StringWriter implements Runnable {
             clientPort = clientSock.getPort();
             System.out.println("Connected to: "+clientIp+":"+clientPort);
 
-            InputStream inputStream = clientSock.getInputStream();
-            OutputStream outputStream = clientSock.getOutputStream();
+            inputStream = clientSock.getInputStream();
+            outputStream = clientSock.getOutputStream();
             streamWriter = new OutputStreamWriter(outputStream);
             bufferedWriter = new BufferedWriter(streamWriter);
 
-            Parser parser = new Parser(inputStream);
-            parser.setDatabase(db);
+            //Parser parser = new Parser(inputStream);
+            //parser.setDatabase(db);
 
-            while (!clientSock.isClosed()) {
+            //while (!clientSock.isClosed()) {
                 //parser.parse(bufferedWriter, clientIp, clientPort);
-            }
+            //}
+
+            byte[] buffer = new byte[10000];
+            int readBytes = inputStream.read(buffer);
+            byte[] result = loadASN(Arrays.copyOfRange(buffer, 0, readBytes));
+            outputStream.write(result);
 
             System.out.println("disconnected to: "+clientIp+":"+clientPort);
             clientSock.close();
@@ -185,6 +206,108 @@ public class Server extends StringWriter implements Runnable {
             e3.printStackTrace();
         }
         Thread.currentThread().interrupt();
+    }
+
+    public byte[] loadASN(byte[] msg) {
+    	try {
+    		Decoder decoder = new Decoder(msg);
+    		ASNEvent event = new ASNEvent().decode(decoder);
+    		switch(event.getEventId()) {
+    			case ASNEvent.PROJECT:
+    				return createProject((ASNProject)event.getEvent());
+    			case ASNEvent.GETPROJECT:
+    				return getProject((ASNProject)event.getEvent());
+    			case ASNEvent.PROJECTS:
+    				return getProjects();
+    			case ASNEvent.TAKE:
+    				return assignProject((ASNTake)event.getEvent());
+    		}
+    	} catch (Exception e) {
+    	    e.printStackTrace();	
+    	}
+    	return null;
+    }
+
+    public byte[] createProject(ASNProject project) {
+        String name = project.getName();
+        ASNTask[] tasks = project.getTasks();
+        boolean success = db.createProject(name);
+        ASNProjectOK ok = null;
+
+        if (!success) {
+            ok = new ASNProjectOK(-1);
+        } else {
+            for (int i = 0; i < tasks.length; i++) {
+                success = db.createTask(name,
+                	tasks[i].getName(),
+                    tasks[i].getStartTime(),
+                    tasks[i].getEndTime());
+                if (!success) {
+                    ok = new ASNProjectOK(-1);
+                    break;
+                }
+            }
+        }
+        if (ok == null)
+            ok = new ASNProjectOK(0);
+
+        ASNEvent answer = new ASNEvent(ASNEvent.PROJECTOK,  ok);
+        return answer.encode();
+    }
+
+    public byte[] getProject(ASNProject project) {
+        String name = project.getName();
+        ArrayList<Task> tmp = db.getProject(name);
+        ASNTask[] tasks = new ASNTask[tmp.size()];
+        for (int i = 0; i < tasks.length; i++) {
+        	Task t = tmp.get(i);
+        	tasks[i] = new ASNTask(t.getName(), t.getStartTime(), t.getEndTime());
+            tasks[i].assign(t.getUser(), t.getIp(), t.getPort());
+            tasks[i].setStatus(t.isDone());
+        }
+        ASNProject proj = new ASNProject(name, tasks);
+        ASNEvent answer = new ASNEvent(ASNEvent.PROJECT, proj);
+        return answer.encode();
+    }
+
+    public byte[] getProjects() {
+        ArrayList<String> names = db.getProjects();
+        if (names != null) {
+            ASNProject[] projects = new ASNProject[names.size()];
+            for (int i = 0; i < projects.length; i++) {
+                ArrayList<Task> tmp = db.getProject(names.get(i));
+                ASNTask[] tasks = new ASNTask[tmp.size()];
+                for (int j = 0; j < tmp.size(); j++) {
+                	Task t = tmp.get(j);
+                	tasks[j] = new ASNTask(t.getName(), t.getStartTime(), t.getEndTime());
+                    tasks[j].assign(t.getUser(), t.getIp(), t.getPort());
+                    tasks[j].setStatus(t.isDone());
+                }
+                projects[i] = new ASNProject(names.get(i), tasks);
+            }
+            ASNProjectsAnswer answer = new ASNProjectsAnswer(projects);
+            ASNEvent event = new ASNEvent(ASNEvent.PROJECTSANSWER, answer);
+            return event.encode();
+        }
+        ASNEvent answer = new ASNEvent(ASNEvent.PROJECTOK, new ASNProjectOK(-1));
+        return answer.encode();
+    }
+
+    public byte[] assignProject(ASNTake take) {
+        boolean success = false;
+        String proj = take.getProject();
+        String task = take.getTask();
+        String user = take.getUser();
+        success = db.assignTask(proj, task, user);
+        db.updateUser(user, clientIp, clientPort);
+        ASNProjectOK ok = null;
+        if (success) {
+            ok = new ASNProjectOK(0);
+        } else {
+            ok = new ASNProjectOK(-1);
+        }
+        ASNEvent answer = new ASNEvent(ASNEvent.PROJECTOK, ok);
+        return answer.encode();
     }
 
     @Override

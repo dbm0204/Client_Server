@@ -1,7 +1,6 @@
 /**
- * Project ::= [1] SEQUENCE {
- *    name UTF8String,
- *    tasks SEQUENCE OF Task
+ * ProjectOK ::= [1] SEQUENCE {
+ *    code
  * }
  *
  */
