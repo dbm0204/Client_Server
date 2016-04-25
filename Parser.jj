@@ -43,6 +43,10 @@ public class Parser {
   int port = 0;
   boolean isTCP = true;
   
+  Socket socket = null;
+  InputStream reader = null;
+  OutputStream out = null;
+  
   public static void main(String args[]) {
   }
   
@@ -50,6 +54,16 @@ public class Parser {
     this.ip = ip;
     this.port = port;
     this.isTCP = isTCP;
+    
+    if (isTCP) {
+        try {
+            socket = new Socket(ip, port);
+            reader = socket.getInputStream();
+            out = socket.getOutputStream();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
   }
 }
 
@@ -65,6 +79,8 @@ TOKEN: {
 | <GET_PROJECTS: "GET_PROJECTS">
 | <GET_PROJECT: "GET_PROJECT">
 | <EXIT: "EXIT">
+| <LEAVE: "LEAVE">
+| <REGISTER: "REGISTER">
 }
 
 
@@ -101,6 +117,8 @@ void parse():
         |<PROJECT_DEFINITION><COLON>{ project_definition(); }
         |<TAKE><END> { take(); }
         |<GET_PROJECTS> { get_projects(); }
+        |<REGISTER><END> { client_register(); }
+        |<LEAVE><END> { client_leave(); }
         |{ return; }) 
         <EOL> { parse(); }
     } catch (ParseException e) {
@@ -163,6 +181,28 @@ void get_projects():
     }
 }
 
+void client_register():
+{ Token group=null; }
+{
+    group=<VARIABLE>
+    {
+        ASNRegister clientRegister = new ASNRegister(group.toString());
+        ASNEvent event = new ASNEvent(ASNEvent.REGISTER, clientRegister);
+        send(event.encode());
+    }
+}
+
+void client_leave():
+{ Token group=null; }
+{
+    group=<VARIABLE>
+    {
+        ASNLeave leave = new ASNLeave(group.toString());
+        ASNEvent event = new ASNEvent(ASNEvent.LEAVE, leave);
+        send(event.encode());
+    }
+}
+
 void get_project():
 { Token project=null; }
 {
@@ -187,23 +227,26 @@ void send(byte[] msg):
 }
 
 void sendTCP(byte[] msg):
-{ Socket socket = null; }
+{ }
 {
     {
         assert(ip != null);
         try {
-            socket = new Socket(ip, port);
-            InputStream reader = socket.getInputStream();
-            OutputStream out = socket.getOutputStream();
             out.write(msg);
             out.flush();
 
              byte[] buffer = new byte[10000];
              int readBytes = reader.read(buffer);
              Decoder decoder = new Decoder(Arrays.copyOfRange(buffer, 0, readBytes));
+             
+             if (!decoder.fetchAll(reader)) {
+                    System.out.println("Error: buffer too small");
+                    return;
+             }
+             
              ASNEvent event = new ASNEvent().decode(decoder);
              System.out.println(event.toString());
-             socket.close();
+             //socket.close();
         } catch (Exception e) {
             e.printStackTrace();
         }

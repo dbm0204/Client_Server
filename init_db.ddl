@@ -17,3 +17,11 @@ username     TEXT       NOT NULL,
 ip           TEXT,
 port         INTEGER,
 FOREIGN KEY(task_id) REFERENCES tasks(id));
+
+
+CREATE TABLE registery (
+id           INTEGER    PRIMARY KEY,
+ip           TEXT,
+port         INTEGER,
+project_id   INTEGER    NOT_NULL,
+FOREIGN KEY(project_id) REFERENCES projects(project_id));

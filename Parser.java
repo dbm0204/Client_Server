@@ -18,6 +18,10 @@ public class Parser implements ParserConstants {
   int port = 0;
   boolean isTCP = true;
 
+  Socket socket = null;
+  InputStream reader = null;
+  OutputStream out = null;
+
   public static void main(String args[]) {
   }
 
@@ -25,6 +29,16 @@ public class Parser implements ParserConstants {
     this.ip = ip;
     this.port = port;
     this.isTCP = isTCP;
+
+    if (isTCP) {
+        try {
+            socket = new Socket(ip, port);
+            reader = socket.getInputStream();
+            out = socket.getOutputStream();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
   }
 
   final public void parse() throws ParseException {
@@ -51,6 +65,18 @@ take();
       case GET_PROJECTS:{
         jj_consume_token(GET_PROJECTS);
 get_projects();
+        break;
+        }
+      case REGISTER:{
+        jj_consume_token(REGISTER);
+        jj_consume_token(END);
+client_register();
+        break;
+        }
+      case LEAVE:{
+        jj_consume_token(LEAVE);
+        jj_consume_token(END);
+client_leave();
         break;
         }
       default:
@@ -126,6 +152,20 @@ ASNProjects getProjects = new ASNProjects();
         send(event.encode());
   }
 
+  final public void client_register() throws ParseException {Token group=null;
+    group = jj_consume_token(VARIABLE);
+ASNRegister clientRegister = new ASNRegister(group.toString());
+        ASNEvent event = new ASNEvent(ASNEvent.REGISTER, clientRegister);
+        send(event.encode());
+  }
+
+  final public void client_leave() throws ParseException {Token group=null;
+    group = jj_consume_token(VARIABLE);
+ASNLeave leave = new ASNLeave(group.toString());
+        ASNEvent event = new ASNEvent(ASNEvent.LEAVE, leave);
+        send(event.encode());
+  }
+
   final public void get_project() throws ParseException {Token project=null;
     project = jj_consume_token(VARIABLE);
 ASNProject getProject = new ASNProject(project.toString());
@@ -141,21 +181,24 @@ if(isTCP) {
         }
   }
 
-  final public void sendTCP(byte[] msg) throws ParseException {Socket socket = null;
+  final public void sendTCP(byte[] msg) throws ParseException {
 assert(ip != null);
         try {
-            socket = new Socket(ip, port);
-            InputStream reader = socket.getInputStream();
-            OutputStream out = socket.getOutputStream();
             out.write(msg);
             out.flush();
 
              byte[] buffer = new byte[10000];
              int readBytes = reader.read(buffer);
              Decoder decoder = new Decoder(Arrays.copyOfRange(buffer, 0, readBytes));
+
+             if (!decoder.fetchAll(reader)) {
+                    System.out.println("Error: buffer too small");
+                    {if ("" != null) return;}
+             }
+
              ASNEvent event = new ASNEvent().decode(decoder);
              System.out.println(event.toString());
-             socket.close();
+             //socket.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -197,7 +240,7 @@ assert(ip != null);
       jj_la1_init_0();
    }
    private static void jj_la1_init_0() {
-      jj_la1_0 = new int[] {0xca,0x1000000,};
+      jj_la1_0 = new int[] {0x6ca,0x4000000,};
    }
 
   /** Constructor with InputStream. */
@@ -314,7 +357,7 @@ assert(ip != null);
   /** Generate ParseException. */
   public ParseException generateParseException() {
     jj_expentries.clear();
-    boolean[] la1tokens = new boolean[26];
+    boolean[] la1tokens = new boolean[28];
     if (jj_kind >= 0) {
       la1tokens[jj_kind] = true;
       jj_kind = -1;
@@ -328,7 +371,7 @@ assert(ip != null);
         }
       }
     }
-    for (int i = 0; i < 26; i++) {
+    for (int i = 0; i < 28; i++) {
       if (la1tokens[i]) {
         jj_expentry = new int[1];
         jj_expentry[0] = i;

@@ -1,7 +1,7 @@
 /**
- * ProjectOK ::= [1] SEQUENCE {
+ * Event ::= [1] SEQUENCE {
  *    event_id INTEGER
- *    event ASBObj
+ *    event ASBObj SEQUENCE
  * }
  *
  */
@@ -18,6 +18,8 @@ class ASNEvent extends ASNObj implements Cloneable {
     public static final byte PROJECTS=3;
     public static final byte PROJECTSANSWER=4;
     public static final byte TAKE=5;
+    public static final byte REGISTER=6;
+    public static final byte LEAVE=7;
     
     int eventId = -1;
     ASNObj event[];
@@ -96,6 +98,18 @@ class ASNEvent extends ASNObj implements Cloneable {
                     Encoder.CLASS_UNIVERSAL,
                     new ASNTake[0],
                     new ASNTake());     
+        } else if (eventId == REGISTER) {
+            event = decoder.getFirstObject(true)
+                .getSequenceOf (
+                    Encoder.CLASS_PRIVATE,
+                    new ASNRegister[0],
+                    new ASNRegister());     
+        } else if (eventId == LEAVE) {
+            event = decoder.getFirstObject(true)
+                .getSequenceOf (
+                    Encoder.CLASS_CONTEXT,
+                    new ASNLeave[0],
+                    new ASNLeave());     
         }
         
         if (decoder.getTypeByte() != 0) throw new ASN1DecoderFail("Extra objects!");

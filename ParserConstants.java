@@ -25,39 +25,43 @@ public interface ParserConstants {
   /** RegularExpression Id. */
   int EXIT = 8;
   /** RegularExpression Id. */
-  int YEAR = 9;
+  int LEAVE = 9;
   /** RegularExpression Id. */
-  int MONTH = 10;
+  int REGISTER = 10;
   /** RegularExpression Id. */
-  int DAY = 11;
+  int YEAR = 11;
   /** RegularExpression Id. */
-  int DATE = 12;
+  int MONTH = 12;
   /** RegularExpression Id. */
-  int HOUR = 13;
+  int DAY = 13;
   /** RegularExpression Id. */
-  int MINUTES = 14;
+  int DATE = 14;
   /** RegularExpression Id. */
-  int SECONDS = 15;
+  int HOUR = 15;
   /** RegularExpression Id. */
-  int MILISECONDS = 16;
+  int MINUTES = 16;
   /** RegularExpression Id. */
-  int TIME = 17;
+  int SECONDS = 17;
   /** RegularExpression Id. */
-  int DATETIME = 18;
+  int MILISECONDS = 18;
   /** RegularExpression Id. */
-  int EOL = 19;
+  int TIME = 19;
   /** RegularExpression Id. */
-  int END = 20;
+  int DATETIME = 20;
   /** RegularExpression Id. */
-  int COLON = 21;
+  int EOL = 21;
   /** RegularExpression Id. */
-  int DIGIT = 22;
+  int END = 22;
   /** RegularExpression Id. */
-  int LETTER = 23;
+  int COLON = 23;
   /** RegularExpression Id. */
-  int VARIABLE = 24;
+  int DIGIT = 24;
   /** RegularExpression Id. */
-  int SPECIAL = 25;
+  int LETTER = 25;
+  /** RegularExpression Id. */
+  int VARIABLE = 26;
+  /** RegularExpression Id. */
+  int SPECIAL = 27;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -73,6 +77,8 @@ public interface ParserConstants {
     "\"GET_PROJECTS\"",
     "\"GET_PROJECT\"",
     "\"EXIT\"",
+    "\"LEAVE\"",
+    "\"REGISTER\"",
     "<YEAR>",
     "<MONTH>",
     "<DAY>",

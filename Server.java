@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import java.lang.Thread;
 import java.lang.InterruptedException;
@@ -83,6 +84,9 @@ public class Server extends StringWriter implements Runnable {
     private SocketAddress socket = null;
     private InputStream inputStream = null;
     private OutputStream outputStream = null;
+    
+    private static volatile HashMap<String, ArrayList<SocketAddress>>reg = new HashMap<>();
+
 
     public Server(int port, String dataFile, String initFile) {
         super();
@@ -98,7 +102,6 @@ public class Server extends StringWriter implements Runnable {
     public void start() {
         InputStream stream = null;
         SocketAddress address = new InetSocketAddress(port);
-        BufferedWriter writer = new BufferedWriter(this);
         ByteBuffer buffer = ByteBuffer.allocate(10240);
 
         try {
@@ -135,7 +138,6 @@ public class Server extends StringWriter implements Runnable {
                             server.start();
                         }
                     } else if (key.isReadable() && channel == udpChannel) {
-                        //stream = new ByteArrayInputStream(buffer.array());
                         socket = udpChannel.receive(buffer);
                         InetSocketAddress inet = (InetSocketAddress)socket;
                         if (socket != null) {
@@ -145,16 +147,15 @@ public class Server extends StringWriter implements Runnable {
                             System.out.println(ip.getHostAddress()+":"+port);
                             clientIp = ip.getHostAddress();
                             clientPort = port;
-                            //Parser parser = new Parser(stream);
-                            //parser.setDatabase(db);
-                            //parser.parse(writer, ip.getHostAddress(), port);
-                            //write(toString());
 
                             byte[] result = loadASN(buffer.array());
                             
                             DatagramSocket socket = new DatagramSocket();
                             DatagramPacket packet = null;
-                            packet = new DatagramPacket(result, result.length, ip, port);
+                            packet = new DatagramPacket(result, 
+                                                        result.length, 
+                                                        ip, port);
+                                                        
                             socket.send(packet);
                             socket.close();
                         }
@@ -183,17 +184,24 @@ public class Server extends StringWriter implements Runnable {
             streamWriter = new OutputStreamWriter(outputStream);
             bufferedWriter = new BufferedWriter(streamWriter);
 
-            //Parser parser = new Parser(inputStream);
-            //parser.setDatabase(db);
+            while(!clientSock.isClosed()) {
+                byte[] buffer = new byte[10000];
 
-            //while (!clientSock.isClosed()) {
-                //parser.parse(bufferedWriter, clientIp, clientPort);
-            //}
-
-            byte[] buffer = new byte[10000];
-            int readBytes = inputStream.read(buffer);
-            byte[] result = loadASN(Arrays.copyOfRange(buffer, 0, readBytes));
-            outputStream.write(result);
+                int readBytes = inputStream.read(buffer);
+                if (readBytes == -1) {
+                    break;
+                }
+                
+                Decoder decoder = new Decoder(buffer);
+                if (!decoder.fetchAll(inputStream)) {
+                    System.out.println("Error: buffer too small");
+                    continue;
+                }
+                
+                byte[] result = loadASN(Arrays.copyOfRange(buffer,0,readBytes));    
+                outputStream.write(result);
+                outputStream.flush();
+            }
 
             System.out.println("disconnected to: "+clientIp+":"+clientPort);
             clientSock.close();
@@ -212,6 +220,7 @@ public class Server extends StringWriter implements Runnable {
     	try {
     		Decoder decoder = new Decoder(msg);
     		ASNEvent event = new ASNEvent().decode(decoder);
+    		System.out.println(event.getEventId());
     		switch(event.getEventId()) {
     			case ASNEvent.PROJECT:
     				return createProject((ASNProject)event.getEvent());
@@ -221,6 +230,10 @@ public class Server extends StringWriter implements Runnable {
     				return getProjects();
     			case ASNEvent.TAKE:
     				return assignProject((ASNTake)event.getEvent());
+    		    case ASNEvent.REGISTER:
+    		        return register((ASNRegister)event.getEvent());
+    		    case ASNEvent.LEAVE:
+    		        return leave((ASNLeave)event.getEvent());
     		}
     	} catch (Exception e) {
     	    e.printStackTrace();	
@@ -257,16 +270,22 @@ public class Server extends StringWriter implements Runnable {
 
     public byte[] getProject(ASNProject project) {
         String name = project.getName();
+        
         ArrayList<Task> tmp = db.getProject(name);
         ASNTask[] tasks = new ASNTask[tmp.size()];
         for (int i = 0; i < tasks.length; i++) {
         	Task t = tmp.get(i);
-        	tasks[i] = new ASNTask(t.getName(), t.getStartTime(), t.getEndTime());
+        	tasks[i] = new ASNTask(t.getName(), 
+        	                       t.getStartTime(),
+        	                       t.getEndTime());
+        	
             tasks[i].assign(t.getUser(), t.getIp(), t.getPort());
             tasks[i].setStatus(t.isDone());
         }
+        
         ASNProject proj = new ASNProject(name, tasks);
         ASNEvent answer = new ASNEvent(ASNEvent.PROJECT, proj);
+        updateClients(name, answer.encode());
         return answer.encode();
     }
 
@@ -274,12 +293,16 @@ public class Server extends StringWriter implements Runnable {
         ArrayList<String> names = db.getProjects();
         if (names != null) {
             ASNProject[] projects = new ASNProject[names.size()];
-            for (int i = 0; i < projects.length; i++) {
+            for (int i = 0; i < projects.length; i++) {           
                 ArrayList<Task> tmp = db.getProject(names.get(i));
                 ASNTask[] tasks = new ASNTask[tmp.size()];
                 for (int j = 0; j < tmp.size(); j++) {
-                	Task t = tmp.get(j);
-                	tasks[j] = new ASNTask(t.getName(), t.getStartTime(), t.getEndTime());
+                	Task t = tmp.get(j);	
+                	tasks[j] = new ASNTask(t.getName(), 
+                	                       t.getStartTime(),
+                	                       t.getEndTime());
+                	
+                	
                     tasks[j].assign(t.getUser(), t.getIp(), t.getPort());
                     tasks[j].setStatus(t.isDone());
                 }
@@ -287,9 +310,15 @@ public class Server extends StringWriter implements Runnable {
             }
             ASNProjectsAnswer answer = new ASNProjectsAnswer(projects);
             ASNEvent event = new ASNEvent(ASNEvent.PROJECTSANSWER, answer);
+            
+            for (String name: names) {
+                updateClients(name, event.encode());
+            }
+            
             return event.encode();
         }
-        ASNEvent answer = new ASNEvent(ASNEvent.PROJECTOK, new ASNProjectOK(-1));
+
+        ASNEvent answer= new ASNEvent(ASNEvent.PROJECTOK, new ASNProjectOK(-1));
         return answer.encode();
     }
 
@@ -299,15 +328,73 @@ public class Server extends StringWriter implements Runnable {
         String task = take.getTask();
         String user = take.getUser();
         success = db.assignTask(proj, task, user);
-        db.updateUser(user, clientIp, clientPort);
+        success = success && db.updateUser(user, clientIp, clientPort);
         ASNProjectOK ok = null;
         if (success) {
             ok = new ASNProjectOK(0);
         } else {
             ok = new ASNProjectOK(-1);
         }
+                  
         ASNEvent answer = new ASNEvent(ASNEvent.PROJECTOK, ok);
+        updateClients(proj, answer.encode());  
         return answer.encode();
+    }
+    
+    public byte[] register(ASNRegister r) {
+        String proj = r.getGroup();
+        ASNProjectOK ok = null;
+        
+        if (proj != null) {
+            ok = new ASNProjectOK(0);
+        
+            if (!reg.containsKey(proj)) {
+               reg.put(proj, new ArrayList<SocketAddress>());
+            }
+        
+            ArrayList<SocketAddress> sockets = reg.get(proj);
+        
+             if (!sockets.contains(socket)) {
+                sockets.add(socket);
+             }
+        } else {
+            ok = new ASNProjectOK(-1);
+        }
+
+        ASNEvent answer = new ASNEvent(ASNEvent.PROJECTOK, ok);
+        
+        if (proj != null) {
+            updateClients(proj, answer.encode());
+        }
+        return answer.encode();
+    }
+    
+    public byte[] leave(ASNLeave l) {
+        String proj = l.getGroup();
+        ASNProjectOK ok = new ASNProjectOK(0);
+        
+        reg.remove(proj);
+        
+        System.out.println(((InetSocketAddress)socket).getPort() + " left");
+        ASNEvent answer = new ASNEvent(ASNEvent.PROJECTOK, ok);
+        updateClients(proj, answer.encode());
+        return answer.encode();
+    }
+    
+    public void updateClients(String key, byte[] msg) {
+        if (reg.get(key) == null) return;
+        
+        for (SocketAddress sock: reg.get(key)) {
+             try {
+                DatagramSocket socket = new DatagramSocket();
+                DatagramPacket packet = null;
+                packet = new DatagramPacket(msg, msg.length, sock);
+                socket.send(packet);
+                socket.close();
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+            }      
+        }
     }
 
     @Override

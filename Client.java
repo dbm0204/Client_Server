@@ -1,3 +1,4 @@
+import net.ddp2p.ASN1.*;
 import java.util.Scanner;
 
 import org.apache.commons.cli.Option;
@@ -9,8 +10,15 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option.Builder;
 
-public class Client {
+import java.net.InetAddress;
+import java.net.SocketAddress;
+import java.net.DatagramSocket;
+import java.net.DatagramPacket;
+import java.net.Socket;
 
+public class Client {
+    public static String group = null; 
+    
     public static void main(String[] args) {
         HelpFormatter formatter = new HelpFormatter();
 
@@ -41,12 +49,20 @@ public class Client {
             .hasArg()
             .build();
             
-        Option ip_option = Option.builder("a")
+        Option ip_option = Option.builder("d")
             .required(true)
-            .longOpt("address")
-            .desc("ip address of the server to connect to")
-            .argName("address")
-            .build();            
+            .longOpt("domain")
+            .desc("domain to connect to (e.g., 'olin.fit.edu')")
+            .argName("domain")
+            .build();         
+            
+        Option group_option = Option.builder("g")
+            .required(false)
+            .longOpt("group")
+            .desc("register to group")
+            .argName("group")
+            .hasArg()
+            .build();   
             
         Options options = new Options();
         options.addOption(tcp_option);
@@ -54,6 +70,7 @@ public class Client {
         options.addOption(help_option);
         options.addOption(port_option);
         options.addOption(ip_option);
+        options.addOption(group_option);
 
         try {
             CommandLineParser parser = new DefaultParser();
@@ -79,8 +96,15 @@ public class Client {
                 port = Integer.parseInt(cmd.getOptionValue("p"));
             }
              
-            if (cmd.hasOption("a")) {
-                ip = cmd.getOptionValue("a");
+            if (cmd.hasOption("d")) {
+                ip = cmd.getOptionValue("d");
+            }
+            
+            if (cmd.hasOption("g")) {
+                group = cmd.getOptionValue("g");
+                setup(ip, port);
+                eventListener(ip, port, group);
+                return;
             }
 
             Parser cmd_parser = new Parser(System.in);
@@ -97,4 +121,49 @@ public class Client {
             e.printStackTrace();
         }
     }
+    
+    public static void setup(final String ip, final int port) {
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+        public void run() {
+            try {
+            ASNLeave leave = new ASNLeave(group);
+            ASNEvent leaveEvent = null;
+            leaveEvent = new ASNEvent(ASNEvent.LEAVE, leave);
+            byte[] msg = leaveEvent.encode();
+            DatagramSocket socket = new DatagramSocket();
+            InetAddress IpAddress = InetAddress.getByName(ip);
+            DatagramPacket packet = null;
+            packet = new DatagramPacket(msg, msg.length, IpAddress, port);
+            socket.send(packet);
+            } catch (Exception e) {}
+        }
+        });
+    }
+  
+    public static void eventListener(String ip, int port, String group) {
+        ASNRegister clientRegister = new ASNRegister(group);
+        ASNEvent registerEvent = new ASNEvent(ASNEvent.REGISTER, clientRegister);
+        try {
+            byte[] msg = registerEvent.encode();
+            DatagramSocket socket = new DatagramSocket();
+            InetAddress IpAddress = InetAddress.getByName(ip);
+            DatagramPacket packet = null;
+            packet = new DatagramPacket(msg, msg.length, IpAddress, port);
+            socket.send(packet);
+            SocketAddress addr = socket.getLocalSocketAddress();
+            
+            while (true) {
+                byte[] buffer = new byte[10000];
+                packet = new DatagramPacket(buffer, buffer.length, addr);
+                socket.receive(packet);
+            
+                Decoder decoder = new Decoder(buffer);
+                ASNEvent event = new ASNEvent().decode(decoder);
+                System.out.println(event.toString());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }  
+    }
+    
 }

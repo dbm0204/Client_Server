@@ -128,6 +128,22 @@ public class Database {
             "WHERE username = '" + user + "';";
         return runStatement(sql);
     }
+    
+    public boolean registerUser(String group, String ip, int port) {
+            String sql = "INSERT INTO registery " +
+            "(ip, port, project_id) " +
+            "SELECT '" + ip + "', '" + port + "', id FROM " + 
+            "projects WHERE name = '" + group + "';";
+            return runStatement(sql);   
+    }
+    
+    public boolean leave(String group, String ip, int port) {
+        String sql = "DELETE FROM registery " +
+        "WHERE ip = '" + ip + "' AND port = '" + port + "' " +
+        "AND project_id IN (SELECT id FROM " +
+        "projects WHERE name = '"+ group +"');";
+        return runStatement(sql);
+    }
 
     public boolean runStatement(String sql) {
         try {
